@@ -1,0 +1,24 @@
+{
+    "name": "@aiflow-demo/ai-engine",
+    "private": true,
+    "version": "1.0.0",
+    "description": "",
+    "type": "module",
+    "source": "src/index.ts",
+    "main": "build/cjs/index.js",
+    "module": "build/esm/index.js",
+    "exports": {
+        ".": {
+            "import": "./build/esm/index.js"
+        },
+        "./style.css": {
+            "import": "./build/esm/style.css"
+        }
+    },
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+}
