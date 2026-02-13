@@ -6,4 +6,11 @@ miaoma
 miaomaignore
 njsproj
 ntvs
+nums
+pannable
+qwen
+shadcn
+tabler
 vercel
+xyflow
+zoomable
