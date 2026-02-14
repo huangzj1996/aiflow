@@ -10,12 +10,12 @@ import {
     MiniMap,
     Node,
     NodeChange,
-    NodeTypes,
     ReactFlow,
     ReactFlowProvider,
 } from '@xyflow/react'
 import { useCallback, useMemo, useState } from 'react'
 
+import { nodeTypes } from '../nodes'
 import Settings from '../settings/indx'
 
 type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end'
@@ -55,8 +55,6 @@ export type LangGraphSpec = {
     nodes: LangGraphNode[]
     edges: LangGraphEdge[]
 }
-
-const nodeTypes: NodeTypes[] = []
 const initialNodes: Node[] = [
     {
         id: 'start-1',
@@ -130,7 +128,7 @@ const EditorInner = () => {
                 <ReactFlow
                     nodes={nodes}
                     edges={edges}
-                    nodeTypes={{}}
+                    nodeTypes={nodeTypes}
                     onConnect={onConnect}
                     onNodesChange={onNodesChange}
                     onNodeClick={(_, node) => setSelectedNode(node)}
@@ -138,7 +136,7 @@ const EditorInner = () => {
                     fitView
                     fitViewOptions={fitViewOptions}
                 >
-                    <Background bgColor="#537ce4" />
+                    <Background bgColor="#f4f6fb" />
                     <MiniMap pannable zoomable />
                     <Controls />
                 </ReactFlow>
