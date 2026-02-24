@@ -6,16 +6,20 @@ import { History } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
-import { Field, FieldLabel } from '@/components/ui/field'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 
 import { getColor, getIcon } from '../icon-map'
+import { DynamicFormRenderer } from './dynamic-form-renderer'
 
-const Settings = ({ node }: { node?: Node }) => {
+const Settings = ({ node, onUpdateNode }: { node?: Node; onUpdateNode?: (nodeId: string, data: any) => void }) => {
     const NodeIcon = node?.type && getIcon(node.type)
 
+    const handleSave = (data: any) => {
+        if (node && onUpdateNode) {
+            onUpdateNode(node.id, { ...node.data, config: data })
+        }
+    }
     return (
         <div className="w-[350px] flex flex-col items-end">
             <div className="flex mb-4 gap-2">
@@ -62,22 +66,7 @@ const Settings = ({ node }: { node?: Node }) => {
                     )}
                     <span className="font-bold">{node?.type}</span>
                 </div>
-                <div className="space-y-4">
-                    <Field>
-                        <FieldLabel htmlFor="checkout-7j9-card-number-uw1">
-                            模型 <span className="text-red-500">*</span>
-                        </FieldLabel>
-                        <Select>
-                            <SelectTrigger className="w-full" id="checkout-7j9-card-number-uw1">
-                                <SelectValue placeholder="请选择默认模型" />
-                            </SelectTrigger>
-                            <SelectContent id="checkout-7j9-card-number-uw1">
-                                <SelectItem value="gpt-3.5-turbo">gpt-3.5-turbo</SelectItem>
-                                <SelectItem value="gpt-4">gpt-4</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </Field>
-                </div>
+                <div className="space-y-4">{node && <DynamicFormRenderer node={node} onSave={handleSave} />}</div>
             </div>
         </div>
     )

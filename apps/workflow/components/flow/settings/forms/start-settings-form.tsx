@@ -1,0 +1,286 @@
+import { Edit2Icon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+
+import { NodeSettingsFormProps } from '../types'
+
+export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array'
+
+export interface InputParam {
+    name: string
+    type: ParamType
+    defaultValue?: string
+    required?: boolean
+    description?: string
+}
+
+export interface StartNodeConfig {
+    inputs: InputParam[]
+}
+
+const TYPE_LABELS: Record<ParamType, string> = {
+    string: '字符串',
+    number: '数字',
+    boolean: '布尔值',
+    array: '数组',
+    object: '对象',
+}
+
+function ParamEditDialog({
+    open,
+    onOpenChange,
+    param,
+    onSave,
+}: {
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    param?: InputParam
+    onSave: (data: InputParam) => void
+}) {
+    const isEdit = !!param
+
+    const {
+        register,
+        handleSubmit,
+        formState: { errors },
+        watch,
+        setValue,
+        reset,
+    } = useForm<InputParam>({
+        defaultValues: {
+            name: '',
+            type: 'string',
+            defaultValue: '',
+            required: false,
+            description: '',
+        },
+    })
+
+    const paramType = watch('type')
+
+    useEffect(() => {
+        if (open) {
+            reset(
+                param || {
+                    name: '',
+                    type: 'string',
+                    defaultValue: '',
+                    required: false,
+                    description: '',
+                }
+            )
+        }
+    }, [open, reset, param])
+
+    const onSubmit = (data: InputParam) => {
+        onSave(data)
+        reset()
+        onOpenChange(false)
+    }
+
+    const handleCancel = () => {
+        reset()
+        onOpenChange(false)
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>{isEdit ? '编辑参数' : '添加参数'}</DialogTitle>
+                    <DialogDescription>配置工作流的入参信息</DialogDescription>
+                </DialogHeader>
+
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    <Field>
+                        <FieldLabel htmlFor="name">
+                            参数名 <span className="text-red-500">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                            <Input
+                                id="name"
+                                placeholder="例如: count, userName"
+                                {...register('name', {
+                                    required: '参数名不能为空',
+                                    pattern: {
+                                        value: /^[a-zA-Z_][a-zA-Z0-9_]*$/,
+                                        message: '参数名必须以字母或下划线开头，只能包含字母、数字和下划线',
+                                    },
+                                })}
+                            />
+                        </FieldContent>
+                        <FieldError errors={errors.name ? [errors.name] : undefined} />
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="type">
+                            参数类型 <span className="text-red-500">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                            <Select value={paramType} onValueChange={value => setValue('type', value as ParamType)}>
+                                <SelectTrigger className="w-full" id="type">
+                                    <SelectValue placeholder="请选择参数类型" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="string">字符串 (string)</SelectItem>
+                                    <SelectItem value="number">数字 (number)</SelectItem>
+                                    <SelectItem value="boolean">布尔值 (boolean)</SelectItem>
+                                    <SelectItem value="array">数组 (array)</SelectItem>
+                                    <SelectItem value="object">对象 (object)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </FieldContent>
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="defaultValue">默认值</FieldLabel>
+                        <Input
+                            id="defaultValue"
+                            placeholder={
+                                paramType === 'string'
+                                    ? '例如: Hello'
+                                    : paramType === 'number'
+                                      ? '例如: 42'
+                                      : paramType === 'boolean'
+                                        ? '例如: true 或 false'
+                                        : paramType === 'array'
+                                          ? '例如: [1, 2, 3]'
+                                          : '例如: {"key": "value"}'
+                            }
+                            {...register('defaultValue')}
+                        />
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="description">参数描述</FieldLabel>
+                        <FieldContent>
+                            <Textarea
+                                id="description"
+                                placeholder="描述这个参数的用途..."
+                                className="min-h-[80px]"
+                                {...register('description')}
+                            />
+                        </FieldContent>
+                    </Field>
+
+                    <Field>
+                        <FieldLabel htmlFor="required" className="mb-0">
+                            必填参数
+                        </FieldLabel>
+                        <FieldContent>
+                            <Checkbox id="required" {...register('required')} />
+                        </FieldContent>
+                    </Field>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={handleCancel}>
+                            取消
+                        </Button>
+                        <Button type="submit" variant="default">
+                            保存
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormProps<StartNodeConfig>) {
+    const [inputs, setInputs] = useState<InputParam[]>((node.data?.config as any).inputs || [])
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [editingIndex, setEditingIndex] = useState<number | null>(null)
+
+    const handleEditParam = (index: number) => {
+        setEditingIndex(index)
+        setDialogOpen(true)
+    }
+
+    const handleDeleteParam = (index: number) => {
+        setInputs(inputs.filter((_, i) => i !== index))
+    }
+
+    const handleAddParam = () => {
+        setEditingIndex(null)
+        setDialogOpen(true)
+    }
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        onSave?.({ inputs })
+    }
+
+    const handleSaveParam = (data: InputParam) => {
+        if (editingIndex !== null) {
+            setInputs(inputs.map((input, index) => (index === editingIndex ? data : input)))
+        } else {
+            setInputs([...inputs, data])
+        }
+    }
+
+    const currentParam = editingIndex !== null ? inputs[editingIndex] : undefined
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="flex items-center justify-between">
+                <h3 className="text-sm font-medium">入参配置</h3>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddParam}>
+                    <PlusIcon size={16} className="mr-1" />
+                    添加参数
+                </Button>
+            </div>
+
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {inputs.length > 0 ? (
+                    inputs.map((input, index) => (
+                        <div
+                            key={index}
+                            className="border rounded-lg p-3 hover:bg-gray-50 transition-colors flex items-center justify-between group"
+                        >
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="font-medium text-sm">{input.name}</span>
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{TYPE_LABELS[input.type]}</span>
+                                    {input.required && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">必填</span>}
+                                </div>
+                                {input.description && <p className="text-xs text-gray-500 truncate">{input.description}</p>}
+                                {input.defaultValue && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        默认值: <code className="bg-gray-100 px-1 rounded">{input.defaultValue}</code>
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button type="button" variant="ghost" size="sm" onClick={() => handleEditParam(index)}>
+                                    <Edit2Icon size={14} />
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteParam(index)}
+                                    className="text-red-500 hover:text-red-700"
+                                >
+                                    <Trash2Icon size={14} />
+                                </Button>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
+                        <p>暂无入参配置</p>
+                        <p className="text-sm mt-1">点击"添加参数"按钮添加入参</p>
+                    </div>
+                )}
+            </div>
+            <ParamEditDialog open={dialogOpen} onOpenChange={setDialogOpen} param={currentParam} onSave={handleSaveParam} />
+        </form>
+    )
+}

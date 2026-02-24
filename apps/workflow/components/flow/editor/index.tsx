@@ -16,7 +16,7 @@ import {
 import { useCallback, useMemo, useState } from 'react'
 
 import { nodeTypes } from '../nodes'
-import Settings from '../settings/indx'
+import Settings from '../settings'
 
 type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end'
 
@@ -60,7 +60,27 @@ const initialNodes: Node[] = [
         id: 'start-1',
         type: 'start',
         position: { x: 100, y: 200 },
-        data: { label: '开始' },
+        data: {
+            label: '开始',
+            config: {
+                inputs: [
+                    {
+                        name: 'count',
+                        type: 'number',
+                        defaultValue: '10',
+                        required: true,
+                        description: '循环次数',
+                    },
+                    {
+                        name: 'userName',
+                        type: 'string',
+                        defaultValue: 'Guest',
+                        required: false,
+                        description: '用户名称',
+                    },
+                ],
+            },
+        },
     },
     {
         id: 'llm-1',
@@ -122,6 +142,20 @@ const EditorInner = () => {
 
     const fitViewOptions = useMemo(() => ({ padding: 20, includeHiddenNodes: true }), [])
 
+    const onUpdateNode = useCallback((nodeId: string, newData: any) => {
+        setNodes(nodes =>
+            nodes.map(node => {
+                if (node.id === nodeId) {
+                    return {
+                        ...node,
+                        data: newData,
+                    }
+                }
+                return node
+            })
+        )
+    }, [])
+
     return (
         <div className="h-full relative flex flex-col">
             <div className="flex-1">
@@ -143,7 +177,7 @@ const EditorInner = () => {
             </div>
             {selectedNode && (
                 <div className=" absolute top-4 right-6">
-                    <Settings node={selectedNode} />
+                    <Settings node={selectedNode} onUpdateNode={onUpdateNode} />
                 </div>
             )}
         </div>
