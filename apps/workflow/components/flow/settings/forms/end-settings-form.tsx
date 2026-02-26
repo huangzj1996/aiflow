@@ -1,9 +1,8 @@
 import { Edit2Icon, PlusIcon, Trash2Icon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -12,29 +11,28 @@ import { Textarea } from '@/components/ui/textarea'
 
 import { NodeSettingsFormProps } from '../types'
 
-export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array'
+export type OutputParamType = 'string' | 'number' | 'boolean' | 'object' | 'array'
 
-export interface InputParam {
+export interface OutputParam {
     name: string
-    type: ParamType
-    defaultValue?: string
-    required?: boolean
+    type: OutputParamType
+    value: string //使用表达式引用其他节点的输出，如 ${llm-1.output}
     description?: string
 }
 
-export interface StartNodeConfig {
-    inputs: InputParam[]
+export interface EndNodeConfig {
+    outputs: OutputParam[]
 }
 
-const TYPE_LABELS: Record<ParamType, string> = {
+const TYPE_LABELS: Record<OutputParamType, string> = {
     string: '字符串',
     number: '数字',
     boolean: '布尔值',
-    array: '数组',
     object: '对象',
+    array: '数组',
 }
 
-function ParamEditDialog({
+function OutputParamEditDialog({
     open,
     onOpenChange,
     param,
@@ -42,10 +40,17 @@ function ParamEditDialog({
 }: {
     open: boolean
     onOpenChange: (open: boolean) => void
-    param?: InputParam
-    onSave: (data: InputParam) => void
+    param?: OutputParam
+    onSave: (data: OutputParam) => void
 }) {
     const isEdit = !!param
+
+    const defaultValues: OutputParam = param || {
+        name: '',
+        type: 'string',
+        value: '',
+        description: '',
+    }
 
     const {
         register,
@@ -54,33 +59,13 @@ function ParamEditDialog({
         watch,
         setValue,
         reset,
-    } = useForm<InputParam>({
-        defaultValues: {
-            name: '',
-            type: 'string',
-            defaultValue: '',
-            required: false,
-            description: '',
-        },
+    } = useForm<OutputParam>({
+        defaultValues,
     })
 
     const paramType = watch('type')
 
-    useEffect(() => {
-        if (open) {
-            reset(
-                param || {
-                    name: '',
-                    type: 'string',
-                    defaultValue: '',
-                    required: false,
-                    description: '',
-                }
-            )
-        }
-    }, [open, reset, param])
-
-    const onSubmit = (data: InputParam) => {
+    const onSubmit = (data: OutputParam) => {
         onSave(data)
         reset()
         onOpenChange(false)
@@ -95,10 +80,9 @@ function ParamEditDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>{isEdit ? '编辑参数' : '添加参数'}</DialogTitle>
-                    <DialogDescription>配置工作流的入参信息</DialogDescription>
+                    <DialogTitle>{isEdit ? '编辑输出参数' : '添加输出参数'}</DialogTitle>
+                    <DialogDescription>配置工作流的输出参数</DialogDescription>
                 </DialogHeader>
-
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <Field>
                         <FieldLabel htmlFor="name">
@@ -107,7 +91,7 @@ function ParamEditDialog({
                         <FieldContent>
                             <Input
                                 id="name"
-                                placeholder="例如: count, userName"
+                                placeholder="例如: result, summary"
                                 {...register('name', {
                                     required: '参数名不能为空',
                                     pattern: {
@@ -119,13 +103,12 @@ function ParamEditDialog({
                         </FieldContent>
                         <FieldError errors={errors.name ? [errors.name] : undefined} />
                     </Field>
-
                     <Field>
                         <FieldLabel htmlFor="type">
                             参数类型 <span className="text-red-500">*</span>
                         </FieldLabel>
                         <FieldContent>
-                            <Select value={paramType} onValueChange={value => setValue('type', value as ParamType)}>
+                            <Select value={paramType} onValueChange={value => setValue('type', value as OutputParamType)}>
                                 <SelectTrigger className="w-full" id="type">
                                     <SelectValue placeholder="请选择参数类型" />
                                 </SelectTrigger>
@@ -139,24 +122,22 @@ function ParamEditDialog({
                             </Select>
                         </FieldContent>
                     </Field>
-
                     <Field>
-                        <FieldLabel htmlFor="defaultValue">默认值</FieldLabel>
-                        <Input
-                            id="defaultValue"
-                            placeholder={
-                                paramType === 'string'
-                                    ? '例如: Hello'
-                                    : paramType === 'number'
-                                      ? '例如: 42'
-                                      : paramType === 'boolean'
-                                        ? '例如: true 或 false'
-                                        : paramType === 'array'
-                                          ? '例如: [1, 2, 3]'
-                                          : '例如: {"key": "value"}'
-                            }
-                            {...register('defaultValue')}
-                        />
+                        <FieldLabel htmlFor="value">
+                            参数值 <span className="text-red-500">*</span>
+                        </FieldLabel>
+                        <FieldContent>
+                            <Textarea
+                                id="value"
+                                placeholder="例如: ${llm-1.output} 或直接输入固定值"
+                                className="min-h-[80px] font-mono text-sm"
+                                {...register('value', {
+                                    required: '参数值不能为空',
+                                })}
+                            />
+                        </FieldContent>
+                        <FieldError errors={errors.value ? [errors.value] : undefined} />
+                        <p className="text-xs text-muted-foreground mt-1">支持使用 ${'{nodeId.field}'} 引用其他节点的输出</p>
                     </Field>
 
                     <Field>
@@ -164,19 +145,10 @@ function ParamEditDialog({
                         <FieldContent>
                             <Textarea
                                 id="description"
-                                placeholder="描述这个参数的用途..."
-                                className="min-h-[80px]"
+                                placeholder="描述这个输出参数的用途..."
+                                className="min-h-[60px]"
                                 {...register('description')}
                             />
-                        </FieldContent>
-                    </Field>
-
-                    <Field>
-                        <FieldLabel htmlFor="required" className="mb-0">
-                            必填参数
-                        </FieldLabel>
-                        <FieldContent>
-                            <Checkbox id="required" {...register('required')} />
                         </FieldContent>
                     </Field>
 
@@ -194,10 +166,14 @@ function ParamEditDialog({
     )
 }
 
-export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormProps<StartNodeConfig>) {
-    const [inputs, setInputs] = useState<InputParam[]>((node.data?.config as any)?.inputs || [])
+export function EndSettingsForm({ node, onSave, onCancel }: NodeSettingsFormProps<EndNodeConfig>) {
+    const [outputs, setOutputs] = useState<OutputParam[]>((node.data?.config as any)?.outputs || [])
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
+    const handleAddParam = () => {
+        setEditingIndex(null)
+        setDialogOpen(true)
+    }
 
     const handleEditParam = (index: number) => {
         setEditingIndex(index)
@@ -205,57 +181,51 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
     }
 
     const handleDeleteParam = (index: number) => {
-        setInputs(inputs.filter((_, i) => i !== index))
+        setOutputs(outputs.filter((_, i) => i !== index))
     }
 
-    const handleAddParam = () => {
-        setEditingIndex(null)
-        setDialogOpen(true)
+    const handleSaveParam = (data: OutputParam) => {
+        if (editingIndex !== null) {
+            // 编辑现有参数
+            setOutputs(outputs.map((output, i) => (i === editingIndex ? data : output)))
+        } else {
+            // 添加新参数
+            setOutputs([...outputs, data])
+        }
     }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSave?.({ inputs })
+        onSave?.({ outputs })
     }
 
-    const handleSaveParam = (data: InputParam) => {
-        if (editingIndex !== null) {
-            setInputs(inputs.map((input, index) => (index === editingIndex ? data : input)))
-        } else {
-            setInputs([...inputs, data])
-        }
-    }
+    const currentParam = editingIndex !== null ? outputs[editingIndex] : undefined
 
-    const currentParam = editingIndex !== null ? inputs[editingIndex] : undefined
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">入参配置</h3>
+                <h3 className="text-sm font-medium">输出参数配置</h3>
                 <Button type="button" variant="outline" size="sm" onClick={handleAddParam}>
                     <PlusIcon size={16} className="mr-1" />
                     添加参数
                 </Button>
             </div>
-
             <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {inputs.length > 0 ? (
-                    inputs.map((input, index) => (
+                {outputs.length > 0 ? (
+                    outputs.map((output, index) => (
                         <div
                             key={index}
                             className="border rounded-lg p-3 hover:bg-gray-50 transition-colors flex items-center justify-between group"
                         >
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm">{input.name}</span>
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{TYPE_LABELS[input.type]}</span>
-                                    {input.required && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">必填</span>}
+                                    <span className="font-medium text-sm">{output.name}</span>
+                                    <span className="text-xs text-gray-500 bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                                        {TYPE_LABELS[output.type]}
+                                    </span>
                                 </div>
-                                {input.description && <p className="text-xs text-gray-500 truncate">{input.description}</p>}
-                                {input.defaultValue && (
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        默认值: <code className="bg-gray-100 px-1 rounded">{input.defaultValue}</code>
-                                    </p>
-                                )}
+                                <p className="text-xs text-gray-500 font-mono truncate">{output.value}</p>
+                                {output.description && <p className="text-xs text-gray-400 mt-1 truncate">{output.description}</p>}
                             </div>
                             <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <Button type="button" variant="ghost" size="sm" onClick={() => handleEditParam(index)}>
@@ -275,12 +245,23 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
                     ))
                 ) : (
                     <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
-                        <p>暂无入参配置</p>
-                        <p className="text-sm mt-1">点击"添加参数"按钮添加入参</p>
+                        <p>暂无输出参数配置</p>
+                        <p className="text-sm mt-1">点击"添加参数"按钮配置工作流输出</p>
                     </div>
                 )}
             </div>
-            <ParamEditDialog open={dialogOpen} onOpenChange={setDialogOpen} param={currentParam} onSave={handleSaveParam} />
+            <p className="text-xs text-muted-foreground">配置工作流结束时返回的输出参数，可引用前置节点的输出作为最终结果。</p>
+            <div className="flex gap-2 pt-4">
+                <Button type="submit" variant="default" className="flex-1">
+                    保存
+                </Button>
+                {onCancel && (
+                    <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+                        取消
+                    </Button>
+                )}
+            </div>
+            <OutputParamEditDialog open={dialogOpen} onOpenChange={setDialogOpen} param={currentParam} onSave={handleSaveParam} />
         </form>
     )
 }

@@ -1,4 +1,4 @@
-import { StartSettingsForm } from './forms'
+import { ConditionSettingsForm, EndSettingsForm, LLMSettingsForm, StartSettingsForm, ToolSettingsForm } from './forms'
 import { NodeKind, NodeSettingsFormComponent, NodeSettingsStrategy } from './types'
 
 /**
@@ -44,3 +44,7 @@ class NodeSettingsRegistry implements NodeSettingsStrategy {
 export const nodeSettingsRegistry = new NodeSettingsRegistry()
 
 nodeSettingsRegistry.register('start', StartSettingsForm)
+nodeSettingsRegistry.register('end', EndSettingsForm)
+nodeSettingsRegistry.register('llm', LLMSettingsForm)
+nodeSettingsRegistry.register('tool', ToolSettingsForm)
+nodeSettingsRegistry.register('condition', ConditionSettingsForm)
