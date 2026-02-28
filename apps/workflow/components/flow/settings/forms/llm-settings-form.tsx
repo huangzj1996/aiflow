@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
@@ -6,7 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
+import { getAvailableNodeOutputs } from '../node-outputs'
 import { NodeSettingsFormProps } from '../types'
+import { VariableEditor } from '../variable-editor'
 
 export interface LLMNodeConfig {
     model: string
@@ -17,7 +20,7 @@ export interface LLMNodeConfig {
     maxTokens?: number
 }
 
-export function LLMSettingsForm({ node, onCancel, onSave }: NodeSettingsFormProps<LLMNodeConfig>) {
+export function LLMSettingsForm({ node, onCancel, onSave, flowContext }: NodeSettingsFormProps<LLMNodeConfig>) {
     const defaultValues: LLMNodeConfig = {
         model: (node.data?.config as any)?.model || 'gpt-3.5-turbo',
         systemPrompt: (node.data?.config as any)?.systemPrompt || '',
@@ -36,14 +39,23 @@ export function LLMSettingsForm({ node, onCancel, onSave }: NodeSettingsFormProp
     } = useForm<LLMNodeConfig>({
         defaultValues,
     })
+
+    const availableOutputs = useMemo(() => {
+        if (!flowContext) {
+            return []
+        }
+        return getAvailableNodeOutputs(node.id, flowContext.nodes, flowContext.edges)
+    }, [node.id, flowContext])
+
     const selectedModel = watch('model')
+    const systemPrompt = watch('systemPrompt') || '你好${start-1.count}'
 
     const onSubmit = (data: LLMNodeConfig) => {
         onSave?.(data)
     }
 
     return (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 overflow-auto h-96">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Field>
                 <FieldLabel htmlFor="model">
                     模型 <span className="text-red-500">*</span>
@@ -65,11 +77,12 @@ export function LLMSettingsForm({ node, onCancel, onSave }: NodeSettingsFormProp
 
             <Field>
                 <FieldLabel htmlFor="systemPrompt">系统提示词 (System)</FieldLabel>
-                <Textarea
-                    id="systemPrompt"
+                <VariableEditor
+                    value={systemPrompt}
+                    onChange={value => setValue('systemPrompt', value)}
+                    availableOutputs={availableOutputs}
                     placeholder="设定 AI 的角色、行为规范和背景信息..."
-                    className="min-h-[80px]"
-                    {...register('systemPrompt')}
+                    minHeight="80px"
                 />
                 <p className="text-xs text-muted-foreground mt-1">定义 AI 的角色和行为准则</p>
             </Field>

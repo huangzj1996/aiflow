@@ -1,4 +1,4 @@
-import { Brain, GitBranch, HomeIcon, PaintRoller, Terminal } from 'lucide-react'
+import { Brain, GitBranch, Globe, HomeIcon, PaintRoller, Terminal } from 'lucide-react'
 
 export const ICON_MAP = {
     start: HomeIcon,
@@ -6,6 +6,7 @@ export const ICON_MAP = {
     tool: PaintRoller,
     end: Terminal,
     condition: GitBranch,
+    http: Globe,
 }
 
 export function getIcon(type: string) {
@@ -20,6 +21,8 @@ export function getIcon(type: string) {
             return <Terminal size={14} />
         case 'condition':
             return <GitBranch size={14} />
+        case 'http':
+            return <Globe size={14} />
     }
 }
 
@@ -35,5 +38,7 @@ export const getColor = (type: string) => {
             return 'bg-orange-700'
         case 'condition':
             return 'bg-purple-700'
+        case 'http':
+            return 'bg-green-700'
     }
 }

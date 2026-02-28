@@ -237,34 +237,33 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
                 </Button>
             </div>
 
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="space-y-1.5 max-h-[400px] overflow-y-auto">
                 {inputs.length > 0 ? (
                     inputs.map((input, index) => (
                         <div
                             key={index}
-                            className="border rounded-lg p-3 hover:bg-gray-50 transition-colors flex items-center justify-between group"
+                            className="border rounded-md px-2.5 py-1.5 hover:bg-gray-50 transition-colors flex items-center justify-between group"
                         >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm">{input.name}</span>
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{TYPE_LABELS[input.type]}</span>
-                                    {input.required && <span className="text-xs text-red-500 bg-red-50 px-2 py-0.5 rounded">必填</span>}
-                                </div>
-                                {input.description && <p className="text-xs text-gray-500 truncate">{input.description}</p>}
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <span className="font-medium text-sm">{input.name}</span>
+                                <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                    {TYPE_LABELS[input.type]}
+                                </span>
+                                {input.required && <span className="text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded">必填</span>}
                                 {input.defaultValue && (
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        默认值: <code className="bg-gray-100 px-1 rounded">{input.defaultValue}</code>
-                                    </p>
+                                    <span className="text-xs text-muted-foreground">
+                                        = <code className="bg-muted px-1 rounded">{input.defaultValue}</code>
+                                    </span>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button type="button" variant="ghost" size="sm" onClick={() => handleEditParam(index)}>
+                            <div className="flex items-center gap-0.5 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleEditParam(index)}>
                                     <Edit2Icon size={14} />
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon-sm"
                                     onClick={() => handleDeleteParam(index)}
                                     className="text-red-500 hover:text-red-700"
                                 >
@@ -274,9 +273,9 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
                         </div>
                     ))
                 ) : (
-                    <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
-                        <p>暂无入参配置</p>
-                        <p className="text-sm mt-1">点击"添加参数"按钮添加入参</p>
+                    <div className="text-center py-6 text-muted-foreground border border-dashed rounded-md">
+                        <p className="text-sm">暂无入参配置</p>
+                        <p className="text-xs mt-1">点击上方按钮添加</p>
                     </div>
                 )}
             </div>

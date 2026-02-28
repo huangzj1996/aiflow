@@ -1,7 +1,7 @@
 import { IconHistory } from '@tabler/icons-react'
-import { Node } from '@xyflow/react'
+import { Edge, Node } from '@xyflow/react'
 import clsx from 'clsx'
-import { ChevronDownIcon, Play, PlayCircle } from 'lucide-react'
+import { ChevronDownIcon, Play, PlayCircle, X } from 'lucide-react'
 import { History } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -11,18 +11,26 @@ import { Separator } from '@/components/ui/separator'
 
 import { getColor, getIcon } from '../icon-map'
 import { DynamicFormRenderer } from './dynamic-form-renderer'
+import { FlowContext } from './types'
 
-const Settings = ({ node, onUpdateNode }: { node?: Node; onUpdateNode?: (nodeId: string, data: any) => void }) => {
+interface SettingsProps {
+    node?: Node | null
+    onUpdateNode?: (nodeId: string, data: any) => void
+    nodes?: Node[]
+    edges?: Edge[]
+}
+
+const Settings = ({ node, onUpdateNode, nodes = [], edges = [] }: SettingsProps) => {
     const NodeIcon = node?.type && getIcon(node.type)
-
+    const flowContext: FlowContext = { nodes, edges }
     const handleSave = (data: any) => {
         if (node && onUpdateNode) {
             onUpdateNode(node.id, { ...node.data, config: data })
         }
     }
     return (
-        <div className="w-[350px] flex flex-col items-end">
-            <div className="flex mb-4 gap-2">
+        <div className="w-[400px] flex flex-col items-end max-h-screen">
+            <div className="flex mb-4 gap-2 shrink-0">
                 <ButtonGroup>
                     <Button variant="outline" size="sm">
                         <Play /> 测试运行
@@ -59,15 +67,26 @@ const Settings = ({ node, onUpdateNode }: { node?: Node; onUpdateNode?: (nodeId:
                     <IconHistory />
                 </Button>
             </div>
-            <div className="w-full bg-white p-4 rounded-md shadow-md">
-                <div className="flex items-center mb-6">
-                    {node?.type && (
-                        <div className={clsx('mr-3 text-white rounded-lg p-2 shadow-sm', node.type && getColor(node.type))}>{NodeIcon}</div>
-                    )}
-                    <span className="font-bold">{node?.type}</span>
+            {node && (
+                <div className="w-full bg-white py-4 rounded-md shadow-md">
+                    <div className="flex items-center justify-between px-4 mb-6">
+                        <div className="flex items-center">
+                            {node?.type && (
+                                <div className={clsx('mr-3 text-white rounded-lg p-2 shadow-sm', node.type && getColor(node.type))}>
+                                    {NodeIcon}
+                                </div>
+                            )}
+                            <span className="font-bold">{node?.type}</span>
+                        </div>
+                        <Button variant="outline" size="icon-sm">
+                            <X />
+                        </Button>
+                    </div>
+                    <div className="space-y-4 px-4 overflow-y-auto h-[calc(100vh-240px)]">
+                        {node && <DynamicFormRenderer node={node} onSave={handleSave} flowContext={flowContext} />}
+                    </div>
                 </div>
-                <div className="space-y-4">{node && <DynamicFormRenderer node={node} onSave={handleSave} />}</div>
-            </div>
+            )}
         </div>
     )
 }

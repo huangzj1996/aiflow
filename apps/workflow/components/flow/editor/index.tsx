@@ -18,7 +18,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { nodeTypes } from '../nodes'
 import Settings from '../settings'
 
-type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end'
+type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end' | 'http'
 
 export type FlowNodeData = {
     label?: string
@@ -95,10 +95,43 @@ const initialNodes: Node[] = [
         data: { label: '工具', config: { toolName: 'sum', args: {} } },
     },
     {
+        id: 'http-1',
+        type: 'http',
+        position: { x: 900, y: 300 },
+        data: {
+            label: 'HTTP 请求',
+            config: {
+                url: 'https://api.example.com/data',
+                method: 'POST',
+                headers: [],
+                params: [],
+                bodyType: 'json',
+                body: '',
+                formData: [],
+                timeout: 30000,
+            },
+        },
+    },
+    {
         id: 'condition-1',
         type: 'condition',
         position: { x: 1000, y: 200 },
-        data: { label: '条件', config: { condition: '${llm-1.output}' } },
+        data: {
+            label: '条件',
+            config: {
+                model: 'qwen3-0.6b',
+                intents: [
+                    {
+                        name: '查询订单',
+                        condition: '查询内容包含了订单相关信息',
+                    },
+                    {
+                        name: '计算结果',
+                        condition: '计算结果大于等于0',
+                    },
+                ],
+            },
+        },
     },
     {
         id: 'output-1',
@@ -115,20 +148,42 @@ const initialNodes: Node[] = [
 ]
 
 const initialEdges: Edge[] = [
-    { id: 'e1', source: 'start-1', target: 'llm-1' },
-    { id: 'e2', source: 'llm-1', target: 'tool-1' },
-    { id: 'e3', source: 'tool-1', target: 'condition-1' },
+    {
+        id: 'e1',
+        source: 'start-1',
+        target: 'llm-1',
+    },
+    {
+        id: 'e2',
+        source: 'llm-1',
+        target: 'http-1',
+    },
+    {
+        id: 'e3',
+        source: 'http-1',
+        target: 'condition-1',
+    },
     {
         id: 'e4',
-        source: 'condition-1',
-        sourceHandle: 'true',
+        source: 'intent-1',
         target: 'output-1',
     },
     {
         id: 'e5',
-        source: 'condition-1',
-        sourceHandle: 'false',
+        source: 'intent-2',
         target: 'output-2',
+    },
+    {
+        source: 'condition-1',
+        sourceHandle: 'intent-0',
+        target: 'output-1',
+        id: 'xy-edge__condition-1intent-0-output-1',
+    },
+    {
+        source: 'condition-1',
+        sourceHandle: 'intent-1',
+        target: 'output-2',
+        id: 'xy-edge__condition-1intent-1-output-1',
     },
 ]
 const EditorInner = () => {
@@ -169,15 +224,16 @@ const EditorInner = () => {
                     onSelectionChange={({ nodes }) => setSelectedNode(nodes[0] || null)}
                     fitView
                     fitViewOptions={fitViewOptions}
+                    proOptions={{ hideAttribution: true }}
                 >
                     <Background bgColor="#f4f6fb" />
-                    <MiniMap pannable zoomable />
+                    <MiniMap pannable zoomable style={{ right: selectedNode ? 410 : 0 }} />
                     <Controls />
                 </ReactFlow>
             </div>
             {selectedNode && (
                 <div className=" absolute top-4 right-6">
-                    <Settings node={selectedNode} onUpdateNode={onUpdateNode} />
+                    <Settings node={selectedNode} onUpdateNode={onUpdateNode} nodes={nodes} edges={edges} />
                 </div>
             )}
         </div>
