@@ -9,6 +9,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getColor, ICON_MAP } from '../../icon-map'
 import { AvailableNodeOutput, formatVariableExpression, NodeOutputVariable } from '../node-outputs'
 import { NodeKind } from '../types'
+import { SlashCommand } from './slash-command'
+import { VariableMention } from './variable-mention'
 interface VariableEditorProps {
     /** 编辑器的值 （纯文本格式，包含 ${nodeId.field} 变量）  */
     value: string
@@ -298,7 +300,7 @@ function SingleVariableSelector({
                                         {/* 节点分组标题 */}
                                         <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b">
                                             <span
-                                                className={`w-5 h-5 rounded flex items-center justify-center text-white flex-shrink-0 ${bgColor}`}
+                                                className={`w-5 h-5 rounded flex items-center justify-center text-white shrink-0 ${bgColor}`}
                                             >
                                                 {NodeIcon && <NodeIcon size={12} />}
                                             </span>
@@ -364,6 +366,10 @@ function RichTextEditor({
             }),
             Placeholder.configure({
                 placeholder,
+            }),
+            VariableMention,
+            SlashCommand.configure({
+                availableOutputs,
             }),
         ],
         editable: !disabled,

@@ -24,5 +24,6 @@ export function DynamicFormRenderer({ node, onSave, flowContext }: DynamicFormRe
         )
     }
 
+    // eslint-disable-next-line react-hooks/static-components
     return <FormComponent node={node} onSave={onSave} flowContext={flowContext} />
 }

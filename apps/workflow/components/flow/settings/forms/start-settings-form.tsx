@@ -1,5 +1,5 @@
 import { Edit2Icon, PlusIcon, Trash2Icon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
@@ -198,6 +198,12 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
     const [inputs, setInputs] = useState<InputParam[]>((node.data?.config as any)?.inputs || [])
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
+    const newInputs = useRef(inputs)
+
+    useEffect(() => {
+        newInputs.current = inputs
+        onSave?.({ inputs: newInputs.current })
+    }, [inputs])
 
     const handleEditParam = (index: number) => {
         setEditingIndex(index)
@@ -215,7 +221,7 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSave?.({ inputs })
+        onSave?.({ inputs: newInputs.current })
     }
 
     const handleSaveParam = (data: InputParam) => {

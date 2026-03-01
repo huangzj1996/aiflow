@@ -220,7 +220,7 @@ export function EndSettingsForm({ node, onSave, onCancel }: NodeSettingsFormProp
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
                                     <span className="font-medium text-sm">{output.name}</span>
-                                    <span className="text-xs text-gray-500 bg-orange-100 text-orange-700 px-2 py-0.5 rounded">
+                                    <span className="text-xs text-gray-500 bg-orange-100 px-2 py-0.5 rounded">
                                         {TYPE_LABELS[output.type]}
                                     </span>
                                 </div>
