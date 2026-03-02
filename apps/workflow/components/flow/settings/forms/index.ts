@@ -12,3 +12,6 @@ export type { ToolNodeConfig } from './tool-settings-form'
 
 export { ConditionSettingsForm } from './condition-settings-form'
 export type { ConditionNodeConfig, Intent } from './condition-settings-form'
+
+export { HttpSettingsForm } from './http-settings-form'
+export type { HttpNodeConfig, HttpMethod } from './http-settings-form'

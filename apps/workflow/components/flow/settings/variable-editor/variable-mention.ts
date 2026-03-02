@@ -15,6 +15,7 @@ declare module '@tiptap/core' {
     }
 }
 
+// 变量提及节点 用于在文本中插入变量 例如 ${nodeId.variableName}
 export const VariableMention = Node.create<VariableMentionOptions>({
     name: 'variableMention',
     group: 'inline',
@@ -62,6 +63,7 @@ export const VariableMention = Node.create<VariableMentionOptions>({
             },
         }
     },
+    // 解析 HTML 元素为节点 此节点解析 span[data-variable-mention] dom元素
     parseHTML() {
         // console.log('parseHTML')
 
@@ -71,6 +73,7 @@ export const VariableMention = Node.create<VariableMentionOptions>({
             },
         ]
     },
+    // 渲染dom
     renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, unknown> }) {
         // console.log('renderHTML', HTMLAttributes)
 
@@ -79,6 +82,7 @@ export const VariableMention = Node.create<VariableMentionOptions>({
             mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { 'data-variable-mention': '', class: 'variable-mention' }),
         ]
     },
+    // 渲染节点视图 用于在编辑器中显示变量提及节点
     addNodeView() {
         // console.log('addNodeView')
 

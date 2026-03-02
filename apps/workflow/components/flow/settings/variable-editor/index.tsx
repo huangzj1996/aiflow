@@ -367,12 +367,15 @@ function RichTextEditor({
             Placeholder.configure({
                 placeholder,
             }),
+            // 渲染变量类型元素的插件
             VariableMention,
+            // 命令插件，用于触发变量插入
             SlashCommand.configure({
                 availableOutputs,
             }),
         ],
         editable: !disabled,
+        // 初始化内容为 JSONContent 格式
         content: initialContent,
         onUpdate: ({ editor: ed }) => {
             const json = ed.getJSON()

@@ -1,15 +1,14 @@
-import { Edit2Icon, PlusIcon, Trash2Icon } from 'lucide-react'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Field, FieldContent, FieldError, FieldLabel } from '@/components/ui/field'
+import { Field, FieldContent, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 
+import { getAvailableNodeOutputs } from '../node-outputs'
 import { NodeSettingsFormProps } from '../types'
+import { VariableEditor } from '../variable-editor'
 
 export interface Intent {
     name: string
@@ -21,133 +20,100 @@ export interface ConditionNodeConfig {
     intents: Intent[]
 }
 
-function IntentEditDialog({
-    open,
-    onOpenChange,
+function IntentCard({
     intent,
-    onSave,
+    index,
+    onChange,
+    onDelete,
+    availableOutputs,
 }: {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    intent?: Intent
-    onSave: (intent: Intent) => void
+    intent: Intent
+    index: number
+    onChange: (index: number, data: Partial<Intent>) => void
+    onDelete: (index: number) => void
+    availableOutputs: ReturnType<typeof getAvailableNodeOutputs>
 }) {
-    const isEdit = !!intent
-
-    const defaultValues: Intent = intent || { name: '', description: '' }
-
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-        reset,
-    } = useForm<Intent>({ defaultValues })
-
-    const onSubmit = (data: Intent) => {
-        onSave(data)
-        reset()
-        onOpenChange(false)
-    }
-
-    const handleCancel = () => {
-        reset()
-        onOpenChange(false)
-    }
-
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>{isEdit ? '编辑意图' : '添加意图'}</DialogTitle>
-                    <DialogDescription>配置意图识别的分支选项</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <Field>
-                        <FieldLabel htmlFor="name">
-                            意图名称 <span className="text-red-500">*</span>
-                        </FieldLabel>
-                        <FieldContent>
-                            <Input
-                                id="name"
-                                placeholder="例如: 查询订单、咨询价格、投诉反馈"
-                                {...register('name', {
-                                    required: '意图名称不能为空',
-                                })}
-                            />
-                        </FieldContent>
-                        <FieldError errors={errors.name ? [errors.name] : undefined} />
-                    </Field>
-                    <Field>
-                        <FieldLabel htmlFor="description">意图描述</FieldLabel>
-                        <FieldContent>
-                            <Textarea
-                                id="description"
-                                placeholder="描述这个意图的特征，帮助大模型更准确识别..."
-                                className="min-h-[80px]"
-                                {...register('description')}
-                            />
-                        </FieldContent>
-                    </Field>
-
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={handleCancel}>
-                            取消
-                        </Button>
-                        <Button type="submit" variant="default">
-                            保存
-                        </Button>
-                    </DialogFooter>
-                </form>
-            </DialogContent>
-        </Dialog>
+        <div className="border rounded-lg p-3 space-y-3 bg-muted/20">
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                    意图 {index + 1}
+                    <span className="ml-2 text-purple-600 bg-purple-100 px-1.5 py-0.5 rounded">分支 {index + 1}</span>
+                </span>
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDelete(index)}
+                    className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500"
+                >
+                    <Trash2Icon size={14} />
+                </Button>
+            </div>
+            <Field>
+                <FieldLabel className="text-xs">意图名称</FieldLabel>
+                <FieldContent>
+                    <Input
+                        value={intent.name}
+                        onChange={e => onChange(index, { name: e.target.value })}
+                        placeholder="例如: 查询订单、咨询价格"
+                        className="h-8 text-sm"
+                    />
+                </FieldContent>
+            </Field>
+            <Field>
+                <FieldLabel className="text-xs">意图描述</FieldLabel>
+                <FieldContent>
+                    <VariableEditor
+                        value={intent.description || ''}
+                        onChange={value => onChange(index, { description: value })}
+                        availableOutputs={availableOutputs}
+                        placeholder="描述意图特征，可使用 / 插入变量..."
+                        minHeight="60px"
+                    />
+                </FieldContent>
+            </Field>
+        </div>
     )
 }
 
-export function ConditionSettingsForm({ node, onSave, onCancel }: NodeSettingsFormProps<ConditionNodeConfig>) {
+export function ConditionSettingsForm({ node, onSave, onCancel, flowContext }: NodeSettingsFormProps<ConditionNodeConfig>) {
     const defaultConfig = (node.data?.config as any) || {}
     const [model, setModel] = useState<string>(defaultConfig.model || 'gpt-3.5-turbo')
     const [intents, setIntents] = useState<Intent[]>(defaultConfig.intents || [])
-    const [dialogOpen, setDialogOpen] = useState(false)
-    const [editingIndex, setEditingIndex] = useState<number | null>(null)
-    const handleAddIntent = () => {
-        setEditingIndex(null)
-        setDialogOpen(true)
-    }
 
-    const handleEditIntent = (index: number) => {
-        setEditingIndex(index)
-        setDialogOpen(true)
+    const availableOutputs = useMemo(() => {
+        if (!flowContext) return []
+        return getAvailableNodeOutputs(node.id, flowContext.nodes, flowContext.edges)
+    }, [node.id, flowContext])
+
+    const handleAddIntent = () => {
+        setIntents([...intents, { name: '', description: '' }])
     }
 
     const handleDeleteIntent = (index: number) => {
         setIntents(intents.filter((_, i) => i !== index))
     }
 
-    const handleSaveIntent = (intent: Intent) => {
-        if (editingIndex !== null) {
-            setIntents(intents.map((i, index) => (index === editingIndex ? intent : i)))
-        } else {
-            setIntents([...intents, intent])
-        }
-        setDialogOpen(false)
+    const handleChangeIntent = (index: number, data: Partial<Intent>) => {
+        setIntents(intents.map((intent, i) => (i === index ? { ...intent, ...data } : intent)))
     }
 
     const handleSubmit = (e: React.FormEvent) => {
+        // console.log('提交意图:', intents)
+
         e.preventDefault()
+        const validIntents = intents.filter(intent => intent.name.trim())
         onSave?.({
             model,
-            intents,
+            intents: validIntents,
         })
     }
-
-    const currentIntent = editingIndex !== null ? (intents[editingIndex] as any) : {}
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <Field>
-                <FieldLabel htmlFor="model">
-                    识别模型 <span className="text-red-500">*</span>
-                </FieldLabel>
+                <FieldLabel htmlFor="model">识别模型</FieldLabel>
                 <Select value={model} onValueChange={setModel}>
                     <SelectTrigger className="w-full" id="model">
                         <SelectValue placeholder="请选择模型" />
@@ -160,68 +126,37 @@ export function ConditionSettingsForm({ node, onSave, onCancel }: NodeSettingsFo
                         <SelectItem value="qwen-max">qwen-max</SelectItem>
                     </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground mt-1">选择用于意图识别的大语言模型</p>
+                <p className="text-xs text-muted-foreground mt-1">选择用于意图识别的模型</p>
             </Field>
             <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">意图列表</h3>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddIntent}>
-                    <PlusIcon size={16} className="mr-1" />
-                    添加意图
+                <Button type="button" variant="outline" size="sm" onClick={handleAddIntent} className="h-7">
+                    <PlusIcon size={14} className="mr-1" />
+                    添加
                 </Button>
             </div>
 
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            <div className="space-y-3">
                 {intents.length > 0 ? (
                     intents.map((intent, index) => (
-                        <div
+                        <IntentCard
                             key={index}
-                            className="border rounded-lg p-3 hover:bg-gray-50 transition-colors flex items-center justify-between group"
-                        >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm">{intent.name}</span>
-                                    <span className="text-xs text-gray-500 bg-purple-100 px-2 py-0.5 rounded">分支 {index + 1}</span>
-                                </div>
-                                {intent.description && <p className="text-xs text-gray-500 truncate">{intent.description}</p>}
-                            </div>
-
-                            <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button type="button" variant="ghost" size="sm" onClick={() => handleEditIntent(index)}>
-                                    <Edit2Icon size={14} />
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDeleteIntent(index)}
-                                    className="text-red-500 hover:text-red-700"
-                                >
-                                    <Trash2Icon size={14} />
-                                </Button>
-                            </div>
-                        </div>
+                            intent={intent}
+                            index={index}
+                            onChange={handleChangeIntent}
+                            onDelete={handleDeleteIntent}
+                            availableOutputs={availableOutputs}
+                        />
                     ))
                 ) : (
-                    <div className="text-center py-8 text-gray-400 border-2 border-dashed rounded-lg">
-                        <p>暂无意图配置</p>
-                        <p className="text-sm mt-1">点击"添加意图"按钮添加识别分支</p>
+                    <div className="text-center py-6 text-muted-foreground border-2 border-dashed rounded-lg">
+                        <p className="text-sm">暂无意图配置</p>
+                        <p className="text-xs mt-1">点击"添加"配置意图分支</p>
                     </div>
                 )}
             </div>
 
             <p className="text-xs text-muted-foreground">大模型会根据输入内容识别用户意图，并路由到对应分支。无法识别时将走"其他"分支。</p>
-
-            <div className="flex gap-2 pt-4">
-                <Button type="submit" variant="default" className="flex-1">
-                    保存
-                </Button>
-                {onCancel && (
-                    <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
-                        取消
-                    </Button>
-                )}
-            </div>
-            <IntentEditDialog open={dialogOpen} onOpenChange={setDialogOpen} intent={currentIntent} onSave={handleSaveIntent} />
         </form>
     )
 }

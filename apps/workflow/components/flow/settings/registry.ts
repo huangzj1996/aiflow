@@ -1,4 +1,4 @@
-import { ConditionSettingsForm, EndSettingsForm, LLMSettingsForm, StartSettingsForm, ToolSettingsForm } from './forms'
+import { ConditionSettingsForm, EndSettingsForm, HttpSettingsForm, LLMSettingsForm, StartSettingsForm, ToolSettingsForm } from './forms'
 import { NodeKind, NodeSettingsFormComponent, NodeSettingsStrategy } from './types'
 
 /**
@@ -48,3 +48,4 @@ nodeSettingsRegistry.register('end', EndSettingsForm)
 nodeSettingsRegistry.register('llm', LLMSettingsForm)
 nodeSettingsRegistry.register('tool', ToolSettingsForm)
 nodeSettingsRegistry.register('condition', ConditionSettingsForm)
+nodeSettingsRegistry.register('http', HttpSettingsForm)

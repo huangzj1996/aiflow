@@ -42,7 +42,6 @@ const ConditionNode = ({ data, selected }: NodeProps) => {
                 </div>
             </div>
             <Handle type="target" position={Position.Left} />
-
             {intents.length > 0 ? (
                 <div className="space-y-2 mt-2">
                     {intents.map((intent, index) => (
@@ -56,7 +55,7 @@ const ConditionNode = ({ data, selected }: NodeProps) => {
                                 position={Position.Right}
                                 id={`intent-${index}`}
                                 handleClassName={index > 0 ? `translate-y-[${getHandleOffset(index)}px]` : ''}
-                                style={{ top: `${100 + index * 36}px` }}
+                                style={{ top: `${110 + index * 56}px` }}
                             />
                         </div>
                     ))}
