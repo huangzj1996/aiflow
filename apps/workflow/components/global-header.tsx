@@ -15,6 +15,7 @@ const navItems = [
 ]
 export function GlobalHeader() {
     const pathname = usePathname()
+
     // 检查导航项是否激活
     const isNavActive = (item: (typeof navItems)[0]) => {
         if (item.matchPaths) {
