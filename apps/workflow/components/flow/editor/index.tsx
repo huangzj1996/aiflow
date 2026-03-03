@@ -17,6 +17,7 @@ import { useCallback, useMemo, useState } from 'react'
 
 import { nodeTypes } from '../nodes'
 import Settings from '../settings'
+import { FlowEditorHeader } from './header'
 
 type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end' | 'http'
 
@@ -213,6 +214,7 @@ const EditorInner = () => {
 
     return (
         <div className="h-full relative flex flex-col">
+            <FlowEditorHeader />
             <div className="flex-1">
                 <ReactFlow
                     nodes={nodes}
@@ -227,12 +229,12 @@ const EditorInner = () => {
                     proOptions={{ hideAttribution: true }}
                 >
                     <Background bgColor="#f4f6fb" />
-                    <MiniMap pannable zoomable style={{ right: selectedNode ? 410 : 0 }} />
+                    <MiniMap pannable zoomable style={{ right: selectedNode ? 410 : 0, width: 120, height: 80 }} />
                     <Controls />
                 </ReactFlow>
             </div>
             {selectedNode && (
-                <div className=" absolute top-4 right-6">
+                <div className=" absolute top-12 right-4">
                     <Settings node={selectedNode} onUpdateNode={onUpdateNode} nodes={nodes} edges={edges} />
                 </div>
             )}
