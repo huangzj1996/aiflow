@@ -2,7 +2,7 @@
 
 import { BookOpenIcon, SettingsIcon, WrenchIcon, ZapIcon } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { redirect, usePathname } from 'next/navigation'
 
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Button } from './ui/button'
@@ -23,6 +23,11 @@ export function GlobalHeader() {
         }
         return pathname.startsWith(item.url)
     }
+
+    const signOut = () => {
+        redirect(`/account/login?redirect=${encodeURIComponent(pathname)}`)
+    }
+
     return (
         <header className="h-12 border-b border-b-muted-foreground/10 bg-[#F3F4FA] shadow-sm flex items-center px-4 gap-4 shrink-0">
             {/* 左侧 Logo 和 Workspace */}
@@ -80,7 +85,7 @@ export function GlobalHeader() {
                             设置
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>退出登录</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => signOut()}>退出登录</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>

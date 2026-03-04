@@ -86,7 +86,7 @@ export default function LoginPage() {
                 <div className="flex items-center justify-center">
                     <div className="mx-auto grid w-[350px] gap-6">
                         <div className="grid gap-2 text-center">
-                            <h1 className="text-3xl font-bold mb-8">AI 工作流</h1>
+                            <h1 className="text-3xl font-bold mb-8">AI 应用引擎</h1>
                         </div>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
