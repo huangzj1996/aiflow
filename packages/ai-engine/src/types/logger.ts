@@ -1,7 +1,7 @@
 import { NodeKind } from './workflow'
 
 /** 日志级别 */
-export type logLevel = 'debug' | 'info' | 'warn' | 'error'
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 
 /** 日志阶段 */
 export type LogPhase =
@@ -21,7 +21,7 @@ export interface ExecutionLogEntry {
     /** 日志时间戳 */
     timestamp: Date
     /** 日志级别 */
-    level: logLevel
+    level: LogLevel
     /** 日志阶段 */
     phase: LogPhase
     /** 日志消息 */
@@ -30,6 +30,7 @@ export interface ExecutionLogEntry {
     data?: Record<string, unknown>
     /** 日志持续时间 */
     duration?: number
+    nodeId?: string
 }
 
 /** LLM请求日志 */
@@ -63,7 +64,7 @@ export interface HTTPRequestLog {
 export interface HTTPResponseLog {
     status: number
     headers: Record<string, string>
-    data?: Record<string, unknown>
+    data?: Record<string, unknown> | unknown
     duration: number
 }
 
@@ -74,7 +75,7 @@ export interface NodeExecutionResult {
     outputs: Record<string, unknown>
     duration: number
     /** 匹配的分支 */
-    matchedBranch: string
+    matchedBranch?: string
 }
 
 /** 执行日志记录器 */

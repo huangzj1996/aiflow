@@ -78,7 +78,7 @@ export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array' | '
 export interface InputParam {
     name: string
     type: ParamType
-    default?: string
+    defaultValue?: string
     description?: string
     required?: boolean
 }

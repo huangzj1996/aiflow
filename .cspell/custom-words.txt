@@ -15,3 +15,6 @@ vercel
 xyflow
 zoomable
 taiji
+langchain
+Ollama
+ollama
