@@ -7,7 +7,6 @@ import {
     ExecutionContext,
     ExecutionLogger,
     HttpNodeConfig,
-    LLMNodeConfig,
     NodeExecutionResult,
     NodeKind,
     OutputVariableSchema,
@@ -187,8 +186,11 @@ export class HttpExecutor extends BaseNodeExecutor<HttpNodeConfig> {
 
     override getOutputSchema(): OutputVariableSchema[] {
         return [
-            { name: 'output', type: 'string', description: 'LLM 生成的文本内容' },
-            { name: 'tokens', type: 'number', description: '消耗的 token 数量' },
+            { name: 'data', type: 'any', description: 'HTTP 响应的 body 数据' },
+            { name: 'status', type: 'number', description: 'HTTP 响应状态码' },
+            { name: 'headers', type: 'object', description: 'HTTP 响应头' },
+            { name: 'success', type: 'boolean', description: '请求是否成功（2xx 状态码）' },
+            { name: 'error', type: 'string', description: '请求失败时的错误信息' },
         ]
     }
 }
