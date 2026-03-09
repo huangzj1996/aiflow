@@ -1,0 +1,26 @@
+import { LLMNodeConfig, ValidationResult, WorkflowDefinition, WorkflowNode } from '../../types'
+import { NodeValidator } from '../type'
+
+/**
+ * LLM 节点验证器
+ */
+export class LLMValidator implements NodeValidator<LLMNodeConfig> {
+    readonly type = 'llm' as const
+
+    validate(config: LLMNodeConfig): ValidationResult {
+        const errors: string[] = []
+
+        if (!config.model) {
+            errors.push('Model is required')
+        }
+
+        if (!config.userPrompt && !config.systemPrompt) {
+            errors.push('At least one prompt (user or system) is required')
+        }
+
+        return {
+            valid: errors.length === 0,
+            errors: errors.length > 0 ? errors : undefined,
+        }
+    }
+}

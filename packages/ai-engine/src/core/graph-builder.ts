@@ -187,6 +187,9 @@ export class GraphBuilder {
         return false
     }
 
+    /**
+     * 检查是否有环 深度优先算法
+     */
     hasCycleDfs(): boolean {
         const state = new Map() // 0未访问, 1访问中, 2已完成
 
