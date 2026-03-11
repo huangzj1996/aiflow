@@ -18,3 +18,7 @@ taiji
 langchain
 Ollama
 ollama
+DMMF
+sqltag
+toolbelt
+sqlcommenter

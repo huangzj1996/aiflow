@@ -11,15 +11,17 @@ import { Input } from '@/components/ui/input'
 import { TaiJi } from './TaiJi'
 import { World } from './World'
 interface LoginFormValues {
-    username: string
+    email: string
     password: string
+    name?: string
 }
 
 export default function LoginPage() {
     const form = useForm<LoginFormValues>({
         defaultValues: {
-            username: '',
-            password: '',
+            email: 'huangzj15@lenovo.com',
+            password: '12345678',
+            name: '测试邮箱',
         },
     })
 
@@ -31,27 +33,54 @@ export default function LoginPage() {
         setIsLoading(true)
 
         try {
-            // 模拟 API 调用 - 暂时不做前后端联调
-            await new Promise(resolve => setTimeout(resolve, 1000))
-
             if (inputType === 'login') {
-                // 模拟登录成功
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: values.email,
+                        password: values.password,
+                    }),
+                })
+                const data = await response.json()
+
+                if (!response.ok) {
+                    if (data.code === 'EMAIL_NOT_VERIFIED') {
+                        toast.error('请先验证您的邮箱后再登录')
+                        return
+                    }
+                    throw new Error(data.error || '登录失败')
+                }
+
                 toast.success('登录成功')
-
-                // 模拟存储 token
-                localStorage.setItem('token', 'mock_token_' + Date.now())
-
                 const redirectUrl = searchParams.get('redirect') || '/apps'
                 router.push(redirectUrl)
             }
 
             if (inputType === 'register') {
-                toast.success('注册成功，请前往登录')
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: values.email,
+                        password: values.password,
+                        name: values.name || undefined,
+                    }),
+                })
+
+                const data = await response.json()
+
+                if (!response.ok) {
+                    throw new Error(data.error || '注册失败')
+                }
+
+                toast.success('注册成功！请查收验证邮件后登录')
+
                 setInputType('login')
                 form.reset()
             }
-        } catch {
-            toast.error(inputType === 'login' ? '登录失败，请稍后重试' : '注册失败，请稍后重试')
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : '操作失败，请稍后重试')
         } finally {
             setIsLoading(false)
         }
@@ -90,16 +119,37 @@ export default function LoginPage() {
                         </div>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+                                {inputType === 'register' && (
+                                    <FormField
+                                        control={form.control}
+                                        name="name"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>姓名</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="请输入姓名（可选）" disabled={isLoading} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                )}
                                 <FormField
                                     control={form.control}
-                                    rules={{ required: '请输入用户名' }}
-                                    name="username"
+                                    rules={{
+                                        required: '请输入用户名',
+                                        pattern: {
+                                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                            message: '请输入有效的邮箱地址',
+                                        },
+                                    }}
+                                    name="email"
                                     render={({ field }) => {
                                         return (
                                             <FormItem>
-                                                <FormLabel>用户名</FormLabel>
+                                                <FormLabel>邮箱</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} placeholder="请输入用户名" disabled={isLoading} />
+                                                    <Input {...field} type="email" placeholder="请输入邮箱" disabled={isLoading} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -109,7 +159,10 @@ export default function LoginPage() {
                                 <FormField
                                     control={form.control}
                                     name="password"
-                                    rules={{ required: '请输入密码' }}
+                                    rules={{
+                                        required: '请输入密码',
+                                        minLength: inputType === 'register' ? { value: 8, message: '密码至少需要8个字符' } : undefined,
+                                    }}
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>密码</FormLabel>
@@ -142,7 +195,7 @@ export default function LoginPage() {
                             </div>
                         ) : (
                             <div className="text-center text-sm">
-                                已有账号?{' '}
+                                已有账号?
                                 <Button
                                     variant="link"
                                     className="px-1 text-zinc-950"

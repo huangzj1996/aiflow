@@ -2,7 +2,9 @@
 
 import { BookOpenIcon, SettingsIcon, WrenchIcon, ZapIcon } from 'lucide-react'
 import Link from 'next/link'
-import { redirect, usePathname } from 'next/navigation'
+import { redirect, usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Button } from './ui/button'
@@ -13,8 +15,36 @@ const navItems = [
     { title: '知识库', url: '/knowledge', icon: BookOpenIcon, color: '#8B5CF6' },
     { title: '工具', url: '/tools', icon: WrenchIcon, color: '#F59E0B' },
 ]
+
+interface User {
+    id: string
+    email: string
+    name: string | null
+    avatar: string | null
+}
 export function GlobalHeader() {
     const pathname = usePathname()
+
+    const router = useRouter()
+    const [user, setUser] = useState<User | null>(null)
+
+    useEffect(() => {
+        const fetchUser = async () => {
+            try {
+                const response = await fetch('/api/auth/me')
+                if (response.ok) {
+                    const data = await response.json()
+                    if (data.success) {
+                        setUser(data.data.user)
+                    }
+                }
+            } catch (error) {
+                // eslint-disable-next-line no-console
+                console.error('Failed to fetch user:', error)
+            }
+        }
+        fetchUser()
+    }, [])
 
     // 检查导航项是否激活
     const isNavActive = (item: (typeof navItems)[0]) => {
@@ -24,8 +54,22 @@ export function GlobalHeader() {
         return pathname.startsWith(item.url)
     }
 
-    const signOut = () => {
-        redirect(`/account/login?redirect=${encodeURIComponent(pathname)}`)
+    const handleSignOut = async () => {
+        try {
+            const response = await fetch('/api/auth/logout', { method: 'POST' })
+            if (response.ok) {
+                toast.success('已登出')
+                router.push('/account/login')
+            }
+        } catch (error) {
+            toast.error('登出失败')
+        }
+    }
+
+    const getUserInitial = () => {
+        if (user?.name) return user.name.charAt(0).toUpperCase()
+        if (user?.email) return user.email.charAt(0).toUpperCase()
+        return 'U'
     }
 
     return (
@@ -64,28 +108,34 @@ export function GlobalHeader() {
             </nav>
             {/* 右侧操作区 */}
             <div className="flex items-center justify-end gap-2 w-[140px]">
-                {/* <Button variant="ghost" size="sm" className="text-muted-foreground">
-                    <PuzzleIcon size={16} className="mr-1.5" />
-                    插件
-                </Button> */}
+                {user && <span className="text-sm text-muted-foreground truncate max-w-[120px]">{user.name || user.email}</span>}
 
                 {/* 用户头像 */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="rounded-full w-8 h-8">
                             <Avatar className="w-7 h-7">
-                                <AvatarImage src="/avatars/shadcn.jpg" />
-                                <AvatarFallback className="bg-blue-600 text-white text-xs">H</AvatarFallback>
+                                <AvatarImage src={user?.avatar || undefined} />
+                                <AvatarFallback className="bg-blue-600 text-white text-xs">{getUserInitial()}</AvatarFallback>
                             </Avatar>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                        {user && (
+                            <>
+                                <div className="px-2 py-1.5 text-sm">
+                                    <p className="font-medium">{user.name || '未设置姓名'}</p>
+                                    <p className="text-muted-foreground text-xs">{user.email}</p>
+                                </div>
+                                <DropdownMenuSeparator />
+                            </>
+                        )}
                         <DropdownMenuItem>
                             <SettingsIcon size={14} className="mr-2" />
                             设置
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => signOut()}>退出登录</DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleSignOut}>退出登录</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
