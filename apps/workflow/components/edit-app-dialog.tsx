@@ -1,6 +1,6 @@
 'use client'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
 import { appService } from '@/lib/services/app-service'
@@ -13,61 +13,63 @@ import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { Textarea } from './ui/textarea'
 
-interface CreateAppDialogProps {
+interface EditAppDialogProps {
     open: boolean
     onOpenChange: (open: boolean) => void
-    onAppCreated: (app: AppInfo) => void
+    app: AppInfo
+    onAppUpdated?: (app: AppInfo) => void
 }
 
 const defaultIcons = ['🤖', '💬', '📊', '📄', '🔍', '✨', '🚀', '⚡', '🎯', '💡', '🔧', '📝']
 
-export function CreateAppDialog({ open, onOpenChange, onAppCreated }: CreateAppDialogProps) {
-    const router = useRouter()
+export function EditAppDialog({ open, app, onOpenChange, onAppUpdated }: EditAppDialogProps) {
     const [name, setName] = useState('')
     const [description, setDescription] = useState('')
     const [icon, setIcon] = useState('🤖')
-    const [isCreating, setIsCreating] = useState(false)
-    const handleCreate = async () => {
+    const [isSaving, setIsSaving] = useState(false)
+
+    useEffect(() => {
+        if (app) {
+            setName(app.name)
+            setDescription(app.description || '')
+            setIcon(app.icon || '🤖')
+        }
+    }, [app])
+
+    const handleSave = async () => {
         if (!name.trim()) return
-        setIsCreating(true)
+        setIsSaving(true)
         try {
-            const response = await appService.create({
+            const response = await appService.update(app.id, {
                 name: name.trim(),
                 description: description.trim() || undefined,
                 icon,
-                type: 'workflow',
-                tags: [],
             })
             // 关闭对话框并重置表单
             onOpenChange(false)
-            resetForm()
             // 通知父组件
-            onAppCreated?.(response)
-            router.push(`/app/${response.id}/workflow`)
+            onAppUpdated?.(response)
+            toast.success('应用信息已更新')
         } catch (error) {
-            toast.error(error instanceof Error ? error.message : '创建应用失败')
+            toast.error(error instanceof Error ? error.message : '更新应用失败')
         } finally {
-            setIsCreating(false)
+            setIsSaving(false)
         }
     }
 
-    const resetForm = () => {
-        setName('')
-        setDescription('')
-        setIcon('🤖')
-    }
-
     const handleClose = () => {
-        setName('')
-        setDescription('')
-        setIcon('🤖')
+        if (app) {
+            setName('')
+            setDescription('')
+            setIcon('🤖')
+        }
         onOpenChange(false)
     }
     return (
-        <Dialog open={open} onOpenChange={handleClose} modal={false}>
+        <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                    <DialogTitle>创建应用</DialogTitle>
+                    <DialogTitle>编辑应用信息</DialogTitle>
                 </DialogHeader>
 
                 <div className="space-y-5 py-2">
@@ -104,7 +106,7 @@ export function CreateAppDialog({ open, onOpenChange, onAppCreated }: CreateAppD
                             maxLength={50}
                             onKeyDown={e => {
                                 if (e.key === 'Enter' && name.trim()) {
-                                    handleCreate()
+                                    handleSave()
                                 }
                             }}
                         />
@@ -127,11 +129,11 @@ export function CreateAppDialog({ open, onOpenChange, onAppCreated }: CreateAppD
                 </div>
 
                 <DialogFooter>
-                    <Button variant="outline" onClick={handleClose} disabled={isCreating}>
+                    <Button variant="outline" onClick={handleClose} disabled={isSaving}>
                         取消
                     </Button>
-                    <Button onClick={handleCreate} disabled={!name.trim() || isCreating} className="bg-blue-600 hover:bg-blue-700">
-                        {isCreating ? '创建中...' : '创建'}
+                    <Button onClick={handleSave} disabled={!name.trim() || isSaving} className="bg-blue-600 hover:bg-blue-700">
+                        {isSaving ? '保存中...' : '保存'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

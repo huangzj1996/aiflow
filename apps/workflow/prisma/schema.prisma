@@ -24,6 +24,39 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // 关联应用
+  apps App[]
+
   @@map("users")
 }
- 
+
+enum AppType {
+  WORKFLOW
+  CHATBOT
+  AGENT
+}
+
+model App {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  icon        String   @default("🤖")
+  type        AppType  @default(WORKFLOW)
+  tags        String[] @default([])
+  config      Json?
+  version     Int      @default(1)
+  isPublic    Boolean  @default(false)
+  isDeleted   Boolean  @default(false)
+
+  // 关联用户
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@index([userId])
+  @@index([type])
+  @@map("apps")
+}

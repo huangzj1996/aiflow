@@ -75,6 +75,13 @@ export enum ErrorCode {
     USER_NOT_FOUND = 'USER_NOT_FOUND',
     INVALID_VERIFY_TOKEN = 'INVALID_VERIFY_TOKEN',
 
+    // 应用错误 (4xxx)
+    APP_NOT_FOUND = 'APP_NOT_FOUND',
+    APP_ALREADY_EXISTS = 'APP_ALREADY_EXISTS',
+    APP_NAME_INVALID = 'APP_NAME_INVALID',
+    APP_DELETE_FAILED = 'APP_DELETE_FAILED',
+    APP_UPDATE_FAILED = 'APP_UPDATE_FAILED',
+
     // 资源错误 (4xxx)
     RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
     RESOURCE_ALREADY_EXISTS = 'RESOURCE_ALREADY_EXISTS',
@@ -108,6 +115,12 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.RESOURCE_NOT_FOUND]: 404,
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: 400,
 
+    [ErrorCode.APP_NOT_FOUND]: 404,
+    [ErrorCode.APP_ALREADY_EXISTS]: 400,
+    [ErrorCode.APP_NAME_INVALID]: 400,
+    [ErrorCode.APP_DELETE_FAILED]: 500,
+    [ErrorCode.APP_UPDATE_FAILED]: 500,
+
     [ErrorCode.INTERNAL_SERVER_ERROR]: 500,
     [ErrorCode.DATABASE_ERROR]: 500,
     [ErrorCode.EMAIL_SEND_ERROR]: 500,
@@ -132,6 +145,12 @@ export const ErrorCodeMessageMap: Record<ErrorCode, string> = {
     [ErrorCode.EMAIL_NOT_FOUND]: '邮箱不存在',
     [ErrorCode.USER_NOT_FOUND]: '用户不存在',
     [ErrorCode.INVALID_VERIFY_TOKEN]: '无效的验证令牌',
+
+    [ErrorCode.APP_NOT_FOUND]: '应用不存在',
+    [ErrorCode.APP_ALREADY_EXISTS]: '应用已存在',
+    [ErrorCode.APP_NAME_INVALID]: '应用名称无效',
+    [ErrorCode.APP_DELETE_FAILED]: '应用删除失败',
+    [ErrorCode.APP_UPDATE_FAILED]: '应用更新失败',
 
     [ErrorCode.RESOURCE_NOT_FOUND]: '请求的资源不存在',
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: '资源已存在',

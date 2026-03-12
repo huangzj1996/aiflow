@@ -1,6 +1,7 @@
 'use client'
 import { LayoutGridIcon, ListIcon, PlusIcon, SearchIcon } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { AppCard, AppInfo } from '@/components/app-card'
 import { CreateAppDialog } from '@/components/create-app-dialog'
@@ -8,67 +9,10 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { appService } from '@/lib/services/app-service'
 
-// 模拟应用数据
-const mockApps: AppInfo[] = [
-    {
-        id: '1',
-        name: 'miaoma-aiflow-demo',
-        description: '这是一个演示工作流应用，展示了如何使用 AI 工作流处理复杂任务。',
-        icon: '🤖',
-        type: 'workflow',
-        updatedAt: '2025/12/21 09:19',
-        author: '妙码学院',
-        tags: ['AI', '工作流'],
-    },
-    {
-        id: '2',
-        name: '智能客服助手',
-        description: '基于大语言模型的智能客服系统，支持多轮对话和知识库检索。',
-        icon: '💬',
-        type: 'chatbot',
-        updatedAt: '2025/12/20 14:30',
-        author: '妙码学院',
-        tags: ['客服', 'LLM'],
-    },
-    {
-        id: '3',
-        name: '数据分析 Agent',
-        description: '自动分析数据并生成报告的智能代理，支持 SQL 查询和可视化。',
-        icon: '📊',
-        type: 'agent',
-        updatedAt: '2025/12/18 10:00',
-        author: '妙码学院',
-        tags: ['数据分析', 'Agent'],
-    },
-    {
-        id: '4',
-        name: '文档处理工作流',
-        description: '自动处理文档的工作流，支持 OCR、分类、提取和总结。',
-        icon: '📄',
-        type: 'workflow',
-        updatedAt: '2025/12/14 16:45',
-        author: '妙码学院',
-    },
-    {
-        id: '5',
-        name: '代码审查助手',
-        description: 'AI 驱动的代码审查工具，帮助团队提高代码质量。',
-        icon: '🔍',
-        type: 'chatbot',
-        updatedAt: '2025/12/07 11:20',
-        author: '妙码学院',
-    },
-    {
-        id: '6',
-        name: '营销内容生成器',
-        description: '自动生成营销文案、社交媒体帖子和广告创意。',
-        icon: '✨',
-        type: 'workflow',
-        updatedAt: '2025/11/30 09:00',
-        author: '妙码学院',
-    },
-]
+// 分页配置
+const DEFAULT_PAGE_SIZE = 20
 
 export default function AppsPage() {
     const [searchQuery, setSearchQuery] = useState('')
@@ -76,11 +20,54 @@ export default function AppsPage() {
     const [typeFilter, setTypeFilter] = useState<string>('all')
     const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
-    const filteredApps = mockApps.filter(app => {
-        const matchesSearch = app.name.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesType = typeFilter === 'all' || app.type === typeFilter
-        return matchesSearch && matchesType
-    })
+    // 数据状态
+    const [apps, setApps] = useState<AppInfo[]>([])
+    const [loading, setLoading] = useState(true)
+    const [total, setTotal] = useState(0)
+    const [page, setPage] = useState(1)
+
+    const loadApps = useCallback(async () => {
+        setLoading(true)
+        try {
+            const response = await appService.getAppList({
+                search: searchQuery || undefined,
+                type: (typeFilter as 'workflow' | 'chatbot' | 'agent' | 'all') || undefined,
+                page,
+                pageSize: DEFAULT_PAGE_SIZE,
+            })
+
+            setApps(response.items)
+            setTotal(response.total)
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : '加载应用列表失败')
+        } finally {
+            setLoading(false)
+        }
+    }, [searchQuery, typeFilter, page])
+
+    // 创建应用成功回调
+    const handleAppCreated = (newApp: AppInfo) => {
+        setApps(per => [newApp, ...per])
+        setTotal(perv => perv + 1)
+        toast.success('应用创建成功')
+    }
+
+    // 删除应用回调
+    const handleAppDeleted = (appId: string) => {
+        setApps(prev => prev.filter(app => app.id !== appId))
+        setTotal(prev => prev - 1)
+        toast.success('应用删除成功')
+    }
+
+    // 更新应用回调
+    const handleAppUpdated = (updatedApp: AppInfo) => {
+        setApps(prev => prev.map(app => (app.id === updatedApp.id ? updatedApp : app)))
+    }
+
+    // 初始化加载
+    useEffect(() => {
+        loadApps()
+    }, [loadApps])
 
     return (
         <div className="px-12 py-6">
@@ -93,12 +80,21 @@ export default function AppsPage() {
                         <Input
                             placeholder="搜索应用..."
                             value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
+                            onChange={e => {
+                                setSearchQuery(e.target.value)
+                                setPage(1)
+                            }}
                             className="pl-9 h-9"
                         />
                     </div>
                     {/* 类型筛选 */}
-                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <Select
+                        value={typeFilter}
+                        onValueChange={value => {
+                            setTypeFilter(value)
+                            setPage(1)
+                        }}
+                    >
                         <SelectTrigger className="w-32 h-9">
                             <SelectValue placeholder="全部类型" />
                         </SelectTrigger>
@@ -137,21 +133,26 @@ export default function AppsPage() {
                     </div>
                 </Card>
                 {/* 应用卡片列表 */}
-                {filteredApps.map(app => (
-                    <AppCard key={app.id} app={app} />
-                ))}
+                {loading
+                    ? // 加载状态
+                      Array.from({ length: 4 }).map((_, i) => <Card key={i} className="min-h-[140px] animate-pulse bg-muted/50" />)
+                    : apps.map(app => (
+                          <AppCard key={app.id} app={app} onDelete={() => handleAppDeleted(app.id)} onAppUpdated={handleAppUpdated} />
+                      ))}
             </div>
             {/* 空状态 */}
-            {filteredApps.length === 0 && searchQuery && (
+            {!loading && apps.length === 0 && (
                 <div className="text-center py-16">
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
                         <SearchIcon size={24} className="text-muted-foreground" />
                     </div>
-                    <h3 className="font-medium mb-1">没有找到应用</h3>
-                    <p className="text-sm text-muted-foreground">尝试调整搜索条件</p>
+                    <h3 className="font-medium mb-1">{searchQuery || typeFilter !== 'all' ? '没有找到应用' : '还没有应用'}</h3>
+                    <p className="text-sm text-muted-foreground">
+                        {searchQuery || typeFilter !== 'all' ? '尝试调整搜索条件' : '点击上方卡片创建第一个应用'}
+                    </p>
                 </div>
             )}
-            <CreateAppDialog open={createDialogOpen} onOpenChange={value => setCreateDialogOpen(value)} />
+            <CreateAppDialog open={createDialogOpen} onOpenChange={value => setCreateDialogOpen(value)} onAppCreated={handleAppCreated} />
         </div>
     )
 }
