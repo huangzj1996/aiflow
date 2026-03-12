@@ -1,16 +1,44 @@
 import { IconHistory } from '@tabler/icons-react'
 import { ChevronDownIcon, History, Play, PlayCircle } from 'lucide-react'
+import { memo } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
-const time = new Date().toLocaleTimeString()
 
-export const FlowEditorHeader = () => {
+interface FlowEditorHeaderProps {
+    appName?: string
+    // 是否有未保存的变更
+    hasUnsavedChanges?: boolean
+    // 是否正在保存
+    isSaving?: boolean
+    // 最后保存时间
+    lastSavedAt?: string | null
+    // 保存回调
+    onSave?: () => void
+}
+
+export const FlowEditorHeader = memo(function FlowEditorHeader({
+    appName,
+    hasUnsavedChanges,
+    isSaving,
+    lastSavedAt,
+    onSave,
+}: FlowEditorHeaderProps) {
     return (
         <div className="flex items-center justify-between px-4 py-2 bg-transparent absolute top-0 left-0 w-full z-10">
-            <div className="text-xs text-muted-foreground">自动保存 {time} · 未发布 </div>
+            <div className="text-xs text-muted-foreground">
+                {isSaving ? (
+                    <span>保存中...</span>
+                ) : hasUnsavedChanges ? (
+                    <span>未保存</span>
+                ) : lastSavedAt ? (
+                    <span>已保存 {lastSavedAt}</span>
+                ) : (
+                    <span>自动保存</span>
+                )}
+            </div>
             <div className="flex gap-2 shrink-0">
                 <ButtonGroup>
                     <Button variant="outline" size="sm">
@@ -20,6 +48,11 @@ export const FlowEditorHeader = () => {
                         <History />
                     </Button>
                 </ButtonGroup>
+
+                <Button variant="outline" size="sm" disabled={!hasUnsavedChanges || isSaving} onClick={onSave}>
+                    {isSaving ? '保存中...' : '保存'}
+                </Button>
+
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button variant="default" size="sm" aria-label="Open Popover">
@@ -50,4 +83,4 @@ export const FlowEditorHeader = () => {
             </div>
         </div>
     )
-}
+})

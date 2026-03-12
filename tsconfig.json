@@ -8,7 +8,7 @@
         "inlineSources": true,
         "isolatedModules": true,
         "lib": ["ESNext"],
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "noErrorTruncation": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitReturns": true,
@@ -18,7 +18,7 @@
         "sourceMap": true,
         "strict": true,
         "strictBindCallApply": false,
-        "target": "es2018",
+        "target": "esnext",
         "noUncheckedIndexedAccess": true
     }
 }

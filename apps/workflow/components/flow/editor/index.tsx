@@ -3,23 +3,31 @@ import '@xyflow/react/dist/base.css'
 
 import {
     addEdge,
+    applyEdgeChanges,
     applyNodeChanges,
     Background,
+    Connection,
     Controls,
     Edge,
+    EdgeChange,
     MiniMap,
     Node,
     NodeChange,
     ReactFlow,
     ReactFlowProvider,
 } from '@xyflow/react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
+
+import { workflowService } from '@/lib/services/workflow-service'
 
 import { nodeTypes } from '../nodes'
 import Settings from '../settings'
+import { FlowEditorContext } from './context'
 import { FlowEditorHeader } from './header'
 
-type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end' | 'http'
+type NodeKind = 'start' | 'llm' | 'condition' | 'end' | 'http'
 
 export type FlowNodeData = {
     label?: string
@@ -28,7 +36,7 @@ export type FlowNodeData = {
 
 export type FlowNode = {
     id: string
-    type: NodeKind
+    type: string
     position: { x: number; y: number }
     data?: FlowNodeData
 }
@@ -56,182 +64,305 @@ export type LangGraphSpec = {
     nodes: LangGraphNode[]
     edges: LangGraphEdge[]
 }
-const initialNodes: Node[] = [
+// 默认初始节点（用于新工作流 - 只包含开始节点）
+const defaultNodes: Node[] = [
     {
         id: 'start-1',
         type: 'start',
-        position: { x: 100, y: 200 },
+        position: { x: 350, y: 250 },
         data: {
             label: '开始',
             config: {
-                inputs: [
-                    {
-                        name: 'count',
-                        type: 'number',
-                        defaultValue: '10',
-                        required: true,
-                        description: '循环次数',
-                    },
-                    {
-                        name: 'userName',
-                        type: 'string',
-                        defaultValue: 'Guest',
-                        required: false,
-                        description: '用户名称',
-                    },
-                ],
+                inputs: [],
             },
         },
-    },
-    {
-        id: 'llm-1',
-        type: 'llm',
-        position: { x: 400, y: 200 },
-        data: { label: '大模型', config: { model: 'qwen3-0.6b', prompt: '' } },
-    },
-    {
-        id: 'tool-1',
-        type: 'tool',
-        position: { x: 700, y: 200 },
-        data: { label: '工具', config: { toolName: 'sum', args: {} } },
-    },
-    {
-        id: 'http-1',
-        type: 'http',
-        position: { x: 900, y: 300 },
-        data: {
-            label: 'HTTP 请求',
-            config: {
-                url: 'https://api.example.com/data',
-                method: 'POST',
-                headers: [],
-                params: [],
-                bodyType: 'json',
-                body: '',
-                formData: [],
-                timeout: 30000,
-            },
-        },
-    },
-    {
-        id: 'condition-1',
-        type: 'condition',
-        position: { x: 1000, y: 200 },
-        data: {
-            label: '条件',
-            config: {
-                model: 'qwen3-0.6b',
-                intents: [
-                    {
-                        name: '查询订单',
-                        condition: '查询内容包含了订单相关信息',
-                    },
-                    {
-                        name: '计算结果',
-                        condition: '计算结果大于等于0',
-                    },
-                ],
-            },
-        },
-    },
-    {
-        id: 'output-1',
-        type: 'end',
-        position: { x: 1400, y: 200 },
-        data: { label: '结束输出' },
-    },
-    {
-        id: 'output-2',
-        type: 'end',
-        position: { x: 1400, y: 500 },
-        data: { label: '结束输出' },
     },
 ]
 
-const initialEdges: Edge[] = [
-    {
-        id: 'e1',
-        source: 'start-1',
-        target: 'llm-1',
+const defaultEdges: Edge[] = []
+// 节点默认配置
+const defaultNodeConfigs: Record<NodeKind, { label: string; config: Record<string, unknown> }> = {
+    start: {
+        label: '开始',
+        config: {
+            inputs: [],
+        },
     },
-    {
-        id: 'e2',
-        source: 'llm-1',
-        target: 'http-1',
+    llm: {
+        label: '大模型',
+        config: {
+            model: 'gpt-3.5-turbo',
+            systemPrompt: '',
+            userPrompt: '',
+            assistantPrompt: '',
+            temperature: 0.7,
+            maxTokens: 2000,
+        },
     },
-    {
-        id: 'e3',
-        source: 'http-1',
-        target: 'condition-1',
+    http: {
+        label: 'HTTP 请求',
+        config: {
+            url: '',
+            method: 'GET',
+            headers: [],
+            params: [],
+            bodyType: 'none',
+            body: '',
+            formData: [],
+            timeout: 30000,
+        },
     },
-    {
-        id: 'e4',
-        source: 'intent-1',
-        target: 'output-1',
+    condition: {
+        label: '条件分支',
+        config: {
+            model: 'gpt-3.5-turbo',
+            intents: [],
+        },
     },
-    {
-        id: 'e5',
-        source: 'intent-2',
-        target: 'output-2',
+    end: {
+        label: '结束输出',
+        config: {},
     },
-    {
-        source: 'condition-1',
-        sourceHandle: 'intent-0',
-        target: 'output-1',
-        id: 'xy-edge__condition-1intent-0-output-1',
-    },
-    {
-        source: 'condition-1',
-        sourceHandle: 'intent-1',
-        target: 'output-2',
-        id: 'xy-edge__condition-1intent-1-output-1',
-    },
-]
-const EditorInner = () => {
-    const [nodes, setNodes] = useState<Node[]>(initialNodes)
-    const [edges, setEdges] = useState<Edge[]>(initialEdges)
+}
+interface FlowEditorProps {
+    appId: string
+    appName: string
+    initialNodes?: FlowNode[]
+    initialEdges?: FlowEdge[]
+}
+
+// 自动保存防抖延迟（毫秒）
+const AUTO_SAVE_DELAY = 2000
+
+const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: FlowEditorProps) => {
+    // 如果有初始数据则使用初始数据，否则使用默认数据
+    const [nodes, setNodes] = useState<Node[]>(initialNodes.length > 0 ? (initialNodes as Node[]) : defaultNodes)
+    const [edges, setEdges] = useState<Edge[]>(initialEdges.length > 0 ? (initialEdges as Edge[]) : defaultEdges)
 
     const [selectedNode, setSelectedNode] = useState<Node | null>(null)
-    const onConnect = useCallback((connection: any) => setEdges(eds => addEdge(connection, eds)), [])
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+    const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
+    const [addMenuOpen, setAddMenuOpen] = useState(false)
+    // 自动保存定时器引用
+    const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-    const onNodesChange = useCallback((changes: NodeChange<Node>[]) => setNodes(nodes => applyNodeChanges(changes, nodes)), [])
+    // 使用 ref 存储最新的 nodes 和 edges，避免 setState 异步导致保存旧数据
+    const nodesRef = useRef(nodes)
+    const edgesRef = useRef(edges)
+
+    // 同步 ref 值
+    useEffect(() => {
+        nodesRef.current = nodes
+    }, [nodes])
+
+    useEffect(() => {
+        edgesRef.current = edges
+    }, [edges])
+
+    // 检查是否已有开始节点
+    const hasStartNode = useMemo(() => {
+        return nodes.some(node => node.type === 'start')
+    }, [nodes])
+
+    // 清理定时器
+    useEffect(() => {
+        return () => {
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current)
+            }
+        }
+    }, [])
+
+    // 同步 selectedNode 与 nodes 状态（当节点数据更新时，保持选中节点的数据同步）
+    useEffect(() => {
+        if (selectedNode) {
+            const updatedNode = nodes.find(n => n.id === selectedNode.id)
+            if (updatedNode) {
+                setSelectedNode(updatedNode)
+            }
+        }
+    }, [nodes])
+
+    // 保存流程图
+    const saveWorkflow = useCallback(async () => {
+        if (!hasUnsavedChanges) {
+            return
+        }
+
+        setIsSaving(true)
+
+        try {
+            await workflowService.save(appId, {
+                nodes: nodesRef.current as FlowNode[],
+                edges: edgesRef.current as FlowEdge[],
+            })
+            setHasUnsavedChanges(false)
+            setLastSavedAt(new Date())
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : '保存失败')
+        } finally {
+            setIsSaving(false)
+        }
+    }, [appId, hasUnsavedChanges])
+
+    // 触发自动保存（防抖）
+    const triggerAutoSave = useCallback(() => {
+        setHasUnsavedChanges(true)
+        if (autoSaveTimerRef.current) {
+            clearInterval(autoSaveTimerRef.current)
+        }
+
+        autoSaveTimerRef.current = setTimeout(() => {
+            saveWorkflow()
+        }, AUTO_SAVE_DELAY)
+    }, [saveWorkflow])
 
     const fitViewOptions = useMemo(() => ({ padding: 20, includeHiddenNodes: true }), [])
 
-    const onUpdateNode = useCallback((nodeId: string, newData: any) => {
-        setNodes(nodes =>
-            nodes.map(node => {
-                if (node.id === nodeId) {
-                    return {
-                        ...node,
-                        data: newData,
-                    }
-                }
-                return node
-            })
-        )
-    }, [])
+    // 添加节点
+    const onAddNode = useCallback(
+        (type: NodeKind) => {
+            if (type === 'start' && hasStartNode) {
+                toast.error('工作流只能有一个开始节点')
+                return
+            }
 
+            const nodeConfig = defaultNodeConfigs[type]
+
+            const newNode: Node = {
+                id: `${type}-${uuidv4().slice(0, 8)}`,
+                type,
+                position: {
+                    // 放在画布中心附近，稍微偏移避免重叠
+                    x: 350 + Math.random() * 200,
+                    y: 200 + Math.random() * 200,
+                },
+                data: nodeConfig.config,
+            }
+            setNodes(prevNodes => [...prevNodes, newNode])
+            triggerAutoSave()
+            toast.success(`添加${nodeConfig.label}节点`)
+            setAddMenuOpen(false)
+        },
+        [hasStartNode, triggerAutoSave]
+    )
+
+    const onConnect = useCallback(
+        (connection: Connection) => {
+            // 检查是否尝试连接到开始节点
+            const targetIsStart = nodes.some(n => n.id === connection.target && n.type === 'start')
+            if (targetIsStart) {
+                toast.error('不能连接到开始节点')
+                return
+            }
+
+            setEdges(eds => addEdge(connection, eds))
+            triggerAutoSave()
+        },
+        [nodes, triggerAutoSave]
+    )
+
+    const onNodesChange = useCallback(
+        (changes: NodeChange<Node>[]) => {
+            // 阻止删除开始节点
+            const hasRemoveStart = changes.some(
+                change => change.type === 'remove' && nodes.some(n => n.id === change.id && n.type === 'start')
+            )
+            if (hasRemoveStart) {
+                toast.error('不能删除开始节点')
+                return
+            }
+
+            setNodes(nodes => applyNodeChanges(changes, nodes))
+            triggerAutoSave()
+        },
+        [nodes, triggerAutoSave]
+    )
+
+    const onEdgesChange = useCallback(
+        (changes: EdgeChange[]) => {
+            setEdges(edges => applyEdgeChanges(changes, edges))
+            triggerAutoSave()
+        },
+        [triggerAutoSave]
+    )
+
+    const onUpdateNode = useCallback(
+        (nodeId: string, newData: any) => {
+            setNodes(nodes =>
+                nodes.map(node => {
+                    if (node.id === nodeId) {
+                        return {
+                            ...node,
+                            data: newData,
+                        }
+                    }
+                    return node
+                })
+            )
+            triggerAutoSave()
+        },
+        [triggerAutoSave]
+    )
+
+    // 更新节点标题
+    const onUpdateNodeLabel = useCallback(
+        (nodeId: string, newLabel: string) => {
+            setNodes(nodes =>
+                nodes.map(node => {
+                    if (node.id === nodeId) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                label: newLabel,
+                            },
+                        }
+                    }
+                    return node
+                })
+            )
+            triggerAutoSave()
+        },
+        [triggerAutoSave]
+    )
+    // 格式化最后时间
+    const formatLastSavedTime = useCallback(() => {
+        if (!lastSavedAt) {
+            return null
+        }
+        return lastSavedAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    }, [lastSavedAt])
     return (
         <div className="h-full relative flex flex-col">
-            <FlowEditorHeader />
+            <FlowEditorHeader
+                appName={appName}
+                hasUnsavedChanges={hasUnsavedChanges}
+                isSaving={isSaving}
+                lastSavedAt={formatLastSavedTime()}
+                onSave={saveWorkflow}
+            />
             <div className="flex-1">
-                <ReactFlow
-                    nodes={nodes}
-                    edges={edges}
-                    nodeTypes={nodeTypes}
-                    onConnect={onConnect}
-                    onNodesChange={onNodesChange}
-                    onNodeClick={(_, node) => setSelectedNode(node)}
-                    onSelectionChange={({ nodes }) => setSelectedNode(nodes[0] || null)}
-                    fitView
-                    fitViewOptions={fitViewOptions}
-                    proOptions={{ hideAttribution: true }}
-                >
-                    <Background bgColor="#f4f6fb" />
-                    <MiniMap pannable zoomable style={{ right: selectedNode ? 410 : 0, width: 120, height: 80 }} />
-                    <Controls />
-                </ReactFlow>
+                <FlowEditorContext.Provider value={{ nodes, onAddNode, hasStartNode }}>
+                    <ReactFlow
+                        nodes={nodes}
+                        edges={edges}
+                        nodeTypes={nodeTypes}
+                        onConnect={onConnect}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onNodeClick={(_, node) => setSelectedNode(node)}
+                        onSelectionChange={({ nodes }) => setSelectedNode(nodes[0] || null)}
+                        fitView
+                        fitViewOptions={fitViewOptions}
+                        proOptions={{ hideAttribution: true }}
+                    >
+                        <Background bgColor="#f4f6fb" />
+                        <MiniMap pannable zoomable style={{ right: selectedNode ? 410 : 0, width: 120, height: 80 }} />
+                        <Controls />
+                    </ReactFlow>
+                </FlowEditorContext.Provider>
             </div>
             {selectedNode && (
                 <div className=" absolute top-12 right-4">
@@ -242,12 +373,19 @@ const EditorInner = () => {
     )
 }
 
-const FlowEditor = () => {
+interface FlowEditorPropsWrapper {
+    appId: string
+    appName: string
+    initialNodes?: FlowNode[]
+    initialEdges?: FlowEdge[]
+}
+
+const FlowEditor = ({ appId, appName, initialNodes = [], initialEdges = [] }: FlowEditorPropsWrapper) => {
     return (
         <ReactFlowProvider>
-            <EditorInner />
+            <EditorInner appId={appId} appName={appName} initialNodes={initialNodes} initialEdges={initialEdges} />
         </ReactFlowProvider>
     )
 }
 
-export default FlowEditor
+export { FlowEditor }

@@ -52,11 +52,38 @@ model App {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   publishedAt DateTime?
+  workflows   Workflow[]
 
   @@index([userId])
   @@index([type])
   @@map("apps")
+}
+
+model Workflow {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+
+  // 工作流定义（节点、边、配置）
+  nodes Json
+  edges Json
+
+  // 版本控制
+  version     Int     @default(1)
+  isPublished Boolean @default(false)
+
+  // 关联应用
+  appId String
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@index([appId])
+  @@index([version])
+  @@map("workflows")
 }

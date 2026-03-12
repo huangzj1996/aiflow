@@ -7,9 +7,10 @@
 
 import { ActivityIcon, CodeIcon, FileTextIcon, LayoutDashboardIcon, SettingsIcon } from 'lucide-react'
 import Link from 'next/link'
-import { useParams, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
+import { useApp } from '@/lib/contexts/app-context'
 
 import { Separator } from './ui/separator'
 
@@ -28,8 +29,8 @@ const appTypeLabels: Record<string, string> = {
 
 export function WorkflowSidebar() {
     const pathname = usePathname()
-    const params = useParams()
-    const appId = params.id as string
+
+    const { app } = useApp()
 
     const isActive = (url: string) => pathname.includes(`/${url}`)
 
@@ -40,7 +41,7 @@ export function WorkflowSidebar() {
                 <div className="flex items-center justify-between mb-2">
                     {/* 应用图标 */}
                     <div className="w-10 h-10 rounded-md bg-linear-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
-                        <span className="text-xl">🤖</span>
+                        <span className="text-xl">{app?.icon || '🤖'}</span>
                     </div>
                     {/* 设置按钮 */}
                     <Button variant="ghost" size="icon" className="w-7 h-7 text-muted-foreground">
@@ -48,8 +49,10 @@ export function WorkflowSidebar() {
                     </Button>
                 </div>
                 {/* 应用名称 */}
-                <h2 className="font-semibold text-sm truncate">miaoma-aiflow-demo</h2>
-                <p className="text-xs text-muted-foreground">工作流</p>
+                <h2 className="font-semibold text-sm truncate" title={app?.name}>
+                    {app?.name || '加载中...'}
+                </h2>
+                <p className="text-xs text-muted-foreground">{app ? appTypeLabels[app.type] : '工作流'}</p>
             </div>
 
             <Separator className="my-2 bg-muted-foreground/10" />
@@ -61,12 +64,13 @@ export function WorkflowSidebar() {
                         const active = isActive(item.url)
                         return (
                             <li key={item.url}>
-                                <Link href={`/app/${appId}/${item.url}`}>
+                                <Link href={`/app/${app?.id || ''}/${item.url}`}>
                                     <Button
                                         variant={active ? 'secondary' : 'ghost'}
                                         className={`w-full justify-start h-9 ${
                                             active ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 font-medium' : 'text-muted-foreground'
                                         }`}
+                                        disabled={!app}
                                     >
                                         <item.icon size={16} />
                                         {item.title}
