@@ -1,5 +1,5 @@
 import { PlusIcon, Trash2Icon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field'
@@ -81,6 +81,38 @@ export function ConditionSettingsForm({ node, onSave, onCancel, flowContext }: N
     const defaultConfig = (node.data?.config as any) || {}
     const [model, setModel] = useState<string>(defaultConfig.model || 'gpt-3.5-turbo')
     const [intents, setIntents] = useState<Intent[]>(defaultConfig.intents || [])
+
+    const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
+    const lastSavedDataRef = useRef<string>('')
+
+    // 自动保存 - 当 model 或 intents 变化时保存
+    useEffect(() => {
+        const currentDataStr = JSON.stringify({ model, intents })
+
+        // 检查数据是否真的变化了
+        if (currentDataStr === lastSavedDataRef.current) {
+            return
+        }
+
+        // 清除之前的定时器
+        if (autoSaveTimerRef.current) {
+            clearTimeout(autoSaveTimerRef.current)
+        }
+
+        // 设置新的定时器
+        autoSaveTimerRef.current = setTimeout(() => {
+            // 过滤掉空的意图名
+            const validIntents = intents.filter(i => i.name.trim())
+            onSave?.({ model, intents: validIntents })
+            lastSavedDataRef.current = JSON.stringify({ model, intents: validIntents })
+        }, 500)
+
+        return () => {
+            if (autoSaveTimerRef.current) {
+                clearTimeout(autoSaveTimerRef.current)
+            }
+        }
+    }, [model, intents, onSave])
 
     const availableOutputs = useMemo(() => {
         if (!flowContext) return []

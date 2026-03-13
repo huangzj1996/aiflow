@@ -1,5 +1,6 @@
+'use client'
 import { PlusIcon, Trash2Icon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Field, FieldContent, FieldLabel } from '@/components/ui/field'
@@ -58,7 +59,7 @@ function OutputParamCard({
                 </Button>
             </div>
             <div className="flex flex-col items-center gap-2">
-                <Field>
+                <Field className="w-full">
                     <FieldLabel className="text-xs">参数名</FieldLabel>
                     <FieldContent>
                         <Input
@@ -69,7 +70,7 @@ function OutputParamCard({
                         />
                     </FieldContent>
                 </Field>
-                <Field>
+                <Field className="w-full">
                     <FieldLabel className="text-xs">参数值</FieldLabel>
                     <FieldContent>
                         <VariableEditor
@@ -87,7 +88,18 @@ function OutputParamCard({
 }
 
 export function EndSettingsForm({ node, onSave, onCancel, flowContext }: NodeSettingsFormProps<EndNodeConfig>) {
-    const [outputs, setOutputs] = useState<OutputParam[]>((node.data?.config as any)?.outputs || [])
+    const configOutputs = (node.data?.config as any)?.outputs
+    const [outputs, setOutputs] = useState<OutputParam[]>(configOutputs || [])
+
+    const currentNodeIdRef = useRef(node.id)
+
+    useEffect(() => {
+        if (node.id !== currentNodeIdRef.current) {
+            currentNodeIdRef.current = node.id
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setOutputs(configOutputs)
+        }
+    }, [node.id, configOutputs])
 
     const availableOutputs = useMemo(() => {
         if (!flowContext) {
@@ -95,6 +107,25 @@ export function EndSettingsForm({ node, onSave, onCancel, flowContext }: NodeSet
         }
         return getAvailableNodeOutputs(node.id, flowContext.nodes, flowContext.edges)
     }, [node.id, flowContext])
+
+    // 自动保存 - 当 outputs 变化时保存
+    const lastSavedRef = useRef<string>('')
+    useEffect(() => {
+        const currentDataStr = JSON.stringify({ outputs })
+        // 首次渲染或数据没变化时不保存
+        if (lastSavedRef.current === '' || currentDataStr === lastSavedRef.current) {
+            lastSavedRef.current = currentDataStr
+            return
+        }
+        // 500ms 防抖保存
+        const timer = setTimeout(() => {
+            // 过滤掉空的参数名
+            const validOutputs = outputs.filter(o => o.name.trim())
+            onSave?.({ outputs: validOutputs })
+            lastSavedRef.current = JSON.stringify({ outputs: validOutputs })
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [outputs, onSave])
 
     const handleAddParam = () => {
         setOutputs(prevOutputs => [...prevOutputs, { name: '', type: 'string', value: '', description: '' }])

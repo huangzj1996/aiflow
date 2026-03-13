@@ -1,9 +1,9 @@
-/* eslint-disable react-hooks/incompatible-library */
 'use client'
 
+import { Controls } from '@xyflow/react'
 import { PlusIcon, TrashIcon } from 'lucide-react'
 import { useMemo } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
+import { useFormAutoSaveWithControl } from '../form-auto-save-wrapper'
 import { getAvailableNodeOutputs } from '../node-outputs'
 import { NodeSettingsFormProps } from '../types'
 import { VariableEditor } from '../variable-editor'
@@ -36,6 +37,42 @@ export interface HttpNodeConfig {
     timeout?: number
 }
 
+/**
+ * 键值对值编辑器组件 - 使用 Controller 避免父组件重新渲染
+ */
+
+function KeyValueEditor({
+    control,
+    name,
+    availableOutputs,
+    placeholder,
+}: {
+    control: any
+    name: `headers.${number}.value` | `params.${number}.value` | `formData.${number}.value`
+    availableOutputs: ReturnType<typeof getAvailableNodeOutputs>
+    placeholder: string
+}) {
+    return (
+        <Controller
+            name={name}
+            control={control}
+            render={({ field }) => (
+                <VariableEditor
+                    value={field.value}
+                    onChange={field.onChange}
+                    availableOutputs={availableOutputs}
+                    placeholder={placeholder}
+                    singleLine
+                />
+            )}
+        />
+    )
+}
+
+/**
+ * HTTP 请求节点设置表单
+ * 使用 Controller 和 useWatch 优化性能
+ */
 export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSettingsFormProps<HttpNodeConfig>) {
     const defaultValues: HttpNodeConfig = {
         url: (node.data?.config as any)?.url || '',
@@ -51,9 +88,7 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
     const {
         register,
         handleSubmit,
-        watch,
         formState: { errors },
-        setValue,
         control,
     } = useForm<HttpNodeConfig>({ defaultValues })
 
@@ -84,6 +119,7 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
         name: 'formData',
     })
 
+    // 获取可用的上游节点输出
     const availableOutputs = useMemo(() => {
         if (!flowContext) {
             return []
@@ -91,9 +127,12 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
         return getAvailableNodeOutputs(node.id, flowContext.nodes, flowContext.edges)
     }, [node.id, flowContext])
 
-    const method = watch('method')
-    const bodyType = watch('bodyType')
-    const body = watch('body')
+    // 自动保存 - 使用 control 配合 useWatch
+    useFormAutoSaveWithControl(control, onSave, true)
+    // 使用 useWatch 局部监听需要条件渲染的字段，避免整个表单重新渲染
+
+    const method = useWatch({ control, name: 'method' })
+    const bodyType = useWatch({ control, name: 'bodyType' })
 
     const onSubmit = (data: HttpNodeConfig) => {
         onSave?.(data)
@@ -123,31 +162,45 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                     请求 URL <span className="text-red-500">*</span>
                 </FieldLabel>
                 <div className="flex gap-2 items-center">
-                    <Select value={method} onValueChange={(value: HttpMethod) => setValue('method', value)}>
-                        <SelectTrigger className="w-28 shrink-0 h-9">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="GET">GET</SelectItem>
-                            <SelectItem value="POST">POST</SelectItem>
-                            <SelectItem value="PUT">PUT</SelectItem>
-                            <SelectItem value="DELETE">DELETE</SelectItem>
-                            <SelectItem value="PATCH">PATCH</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    {/* Method Select - 使用 Controller */}
+                    <Controller
+                        name="method"
+                        control={control}
+                        render={({ field }) => (
+                            <Select value={field.value} onValueChange={(value: HttpMethod) => field.onChange(value)}>
+                                <SelectTrigger className="w-28 shrink-0 h-9">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="GET">GET</SelectItem>
+                                    <SelectItem value="POST">POST</SelectItem>
+                                    <SelectItem value="PUT">PUT</SelectItem>
+                                    <SelectItem value="DELETE">DELETE</SelectItem>
+                                    <SelectItem value="PATCH">PATCH</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    {/* URL - 使用 Controller */}
                     <div className="flex-1">
-                        <VariableEditor
-                            value={watch('url')}
-                            onChange={value => setValue('url', value)}
-                            availableOutputs={availableOutputs}
-                            placeholder="https://api.example.com/endpoint"
-                            singleLine
+                        <Controller
+                            name="url"
+                            control={control}
+                            render={({ field }) => (
+                                <VariableEditor
+                                    value={field.value || ''}
+                                    onChange={field.onChange}
+                                    availableOutputs={availableOutputs}
+                                    placeholder="https://api.example.com/endpoint"
+                                    singleLine
+                                />
+                            )}
                         />
                     </div>
                 </div>
                 {errors.url && <p className="text-sm text-red-500">{errors.url.message}</p>}
             </Field>
-            {/* 超时设置 */}
+            {/* 超时设置 - 使用 register */}
             <Field>
                 <FieldLabel htmlFor="timeout">超时时间 (ms)</FieldLabel>
                 <Input id="timeout" type="number" placeholder="30000" {...register('timeout', { valueAsNumber: true })} />
@@ -166,12 +219,11 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                         <div key={field.id} className="flex gap-2 items-center">
                             <Input placeholder="Header Name" className="flex-1 h-9" {...register(`headers.${index}.key` as const)} />
                             <div className="flex-1">
-                                <VariableEditor
-                                    value={watch(`headers.${index}.value`)}
-                                    onChange={value => setValue(`headers.${index}.value`, value)}
+                                <KeyValueEditor
+                                    control={control}
+                                    name={`headers.${index}.value`}
                                     availableOutputs={availableOutputs}
-                                    placeholder="Header Value"
-                                    singleLine
+                                    placeholder="Header value"
                                 />
                             </div>
                             <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeHeader(index)}>
@@ -195,12 +247,11 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                             <div key={field.id} className="flex gap-2 items-center">
                                 <Input placeholder="Param Name" className="flex-1 h-9" {...register(`params.${index}.key` as const)} />
                                 <div className="flex-1">
-                                    <VariableEditor
-                                        value={watch(`params.${index}.value`)}
-                                        onChange={value => setValue(`params.${index}.value`, value)}
+                                    <KeyValueEditor
+                                        control={control}
+                                        name={`params.${index}.value`}
                                         availableOutputs={availableOutputs}
                                         placeholder="Param Value"
-                                        singleLine
                                     />
                                 </div>
                                 <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeParam(index)}>
@@ -216,31 +267,43 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                     <Field>
                         <FieldLabel className="mb-3">请求体 (Body)</FieldLabel>
 
-                        {/* Body 类型 Radio Group */}
-                        <RadioGroup
-                            value={bodyType}
-                            onValueChange={(value: BodyType) => setValue('bodyType', value)}
-                            className="flex flex-wrap gap-4 mb-4"
-                        >
-                            {bodyTypeOptions.map(option => (
-                                <div key={option.value} className="flex items-center space-x-2">
-                                    <RadioGroupItem value={option.value} id={`body-type-${option.value}`} />
-                                    <Label htmlFor={`body-type-${option.value}`} className="text-sm font-normal cursor-pointer">
-                                        {option.label}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
+                        {/* Body 类型 Radio Group - 使用controller*/}
+                        <Controller
+                            name="bodyType"
+                            control={control}
+                            render={({ field }) => (
+                                <RadioGroup
+                                    value={field.value}
+                                    onValueChange={(value: BodyType) => field.onChange(value)}
+                                    className="flex flex-wrap gap-4 mb-4"
+                                >
+                                    {bodyTypeOptions.map(option => (
+                                        <div key={option.value} className="flex items-center space-x-2">
+                                            <RadioGroupItem value={option.value} id={`body-type-${option.value}`} />
+                                            <Label htmlFor={`body-type-${option.value}`} className="text-sm font-normal cursor-pointer">
+                                                {option.label}
+                                            </Label>
+                                        </div>
+                                    ))}
+                                </RadioGroup>
+                            )}
+                        />
 
-                        {/* JSON 或 raw 模式：使用多行编辑器 */}
+                        {/* JSON 或 raw 模式：使用多行编辑器 - 使用 Controller */}
                         {useTextEditor && (
-                            <VariableEditor
-                                value={body}
-                                onChange={value => setValue('body', value)}
-                                availableOutputs={availableOutputs}
-                                placeholder={bodyType === 'json' ? '{"key": "value"}' : '请输入文本内容...'}
-                                minHeight="120px"
-                                className="font-mono text-xs"
+                            <Controller
+                                name="body"
+                                control={control}
+                                render={({ field }) => (
+                                    <VariableEditor
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        availableOutputs={availableOutputs}
+                                        placeholder={bodyType === 'json' ? '{"key": "value"}' : '请输入文本内容...'}
+                                        minHeight="120px"
+                                        className="font-mono text-xs"
+                                    />
+                                )}
                             />
                         )}
 
@@ -261,12 +324,11 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                                             {...register(`formData.${index}.key` as const)}
                                         />
                                         <div className="flex-1">
-                                            <VariableEditor
-                                                value={watch(`formData.${index}.value`)}
-                                                onChange={value => setValue(`formData.${index}.value`, value)}
+                                            <KeyValueEditor
+                                                control={control}
+                                                name={`formData.${index}.value`}
                                                 availableOutputs={availableOutputs}
                                                 placeholder="Field Value"
-                                                singleLine
                                             />
                                         </div>
                                         <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeFormData(index)}>

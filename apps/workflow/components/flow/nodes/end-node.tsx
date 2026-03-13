@@ -1,8 +1,17 @@
 import { NodeProps, Position } from '@xyflow/react'
 import clsx from 'clsx'
+import { useMemo } from 'react'
 
+import { useFlowEditorContext } from '../editor/context'
 import { Handle } from '../handle'
 import { ICON_MAP } from '../icon-map'
+import { VariableRenderer } from '../settings/variable-renderer'
+
+// 从变量表达式中解析节点ID和变量名
+function parseVariableExpression(value: string): Array<{ nodeId: string; variableName: string }> {
+    const matches = value.matchAll(/\$\{([^.]+)\.([^}]+)\}/g)
+    return Array.from(matches).map(([_, nodeId, variableName]) => ({ nodeId, variableName }))
+}
 
 interface OutputParam {
     name: string
@@ -18,6 +27,30 @@ interface EndNodeConfig {
 const EndNode = ({ data, selected }: NodeProps) => {
     const config = (data?.config as EndNodeConfig) || {}
     const outputs = config.outputs || []
+    const label = (data?.label as string) || '结束'
+
+    const { nodes: allNodes } = useFlowEditorContext()
+
+    // 构建可用输出映射，用于变量渲染器
+    const availableOutputs = useMemo(() => {
+        if (!allNodes) return []
+
+        const nodeMap = new Map(allNodes.map(node => [node.id, node.data?.label || node.id]))
+
+        // 从所有输出中提取引用的节点
+        const referencedNodeIds = new Set<string>()
+
+        outputs.forEach(output => {
+            const parsed = parseVariableExpression(output.value)
+            parsed.forEach(({ nodeId }) => referencedNodeIds.add(nodeId))
+        })
+
+        return Array.from(referencedNodeIds).map(nodeId => ({
+            nodeId,
+            nodeLabel: nodeMap.get(nodeId) || nodeId,
+            outputs: [{ name: 'output', label: '输出' }],
+        }))
+    }, [allNodes, outputs])
 
     return (
         <div
@@ -30,7 +63,7 @@ const EndNode = ({ data, selected }: NodeProps) => {
                 <div className="mr-3 bg-orange-500 text-white rounded-lg p-2 shadow-sm">
                     <ICON_MAP.end size={14} />
                 </div>
-                <span className="font-bold">结束</span>
+                <span className="font-bold">{label}</span>
             </div>
             <Handle type="target" position={Position.Left} />
 
@@ -38,11 +71,7 @@ const EndNode = ({ data, selected }: NodeProps) => {
                 <div className="mt-2 pt-2 border-t space-y-1">
                     {outputs.map((output, index) => (
                         <div key={index} className="flex items-center gap-1 text-xs">
-                            <span className="text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{output.name}</span>
-                            <span className="text-gray-400">:</span>
-                            <span className="text-orange-600 truncate max-w-[100px] font-mono" title={output.value}>
-                                {output.value}
-                            </span>
+                            <VariableRenderer value={output.value} availableOutputs={availableOutputs} className="text-xs" />
                         </div>
                     ))}
                 </div>

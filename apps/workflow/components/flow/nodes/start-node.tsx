@@ -16,6 +16,7 @@ const TYPE_ICONS: Record<string, string> = {
 
 const StartNode = ({ data, selected }: NodeProps) => {
     const inputs = (data?.config as any)?.inputs as InputParam[] | undefined
+    const label = (data?.label as string) || '开始'
     return (
         <div
             className={clsx('rounded-xl border bg-white shadow-md p-3 w-44', {
@@ -27,7 +28,7 @@ const StartNode = ({ data, selected }: NodeProps) => {
                 <div className="mr-3 bg-blue-700 text-white rounded-lg p-2 shadow-sm">
                     <ICON_MAP.start size={14} />
                 </div>
-                <span className="font-bold">开始</span>
+                <span className="font-bold">{label}</span>
             </div>
             {inputs && inputs.length > 0 ? (
                 <div className="space-y-2">

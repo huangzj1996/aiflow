@@ -17,6 +17,7 @@ interface IntentNodeConfig {
 const ConditionNode = ({ data, selected }: NodeProps) => {
     const config = (data?.config as IntentNodeConfig) || {}
     const intents = config?.intents || []
+    const label = (data?.label as string) || '意图识别'
 
     const getHandleOffset = (index: number) => {
         return index * 45
@@ -33,7 +34,7 @@ const ConditionNode = ({ data, selected }: NodeProps) => {
                 <div className="mr-3 bg-purple-700 text-white rounded-lg p-2 shadow-sm">
                     <ICON_MAP.condition size={14} />
                 </div>
-                <span className="font-bold">意图识别</span>
+                <span className="font-bold">{label}</span>
             </div>
             <div className="space-y-2">
                 <div className="flex items-center gap-2">

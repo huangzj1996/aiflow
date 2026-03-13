@@ -8,6 +8,7 @@ export default function HttpNode({ data, selected }: NodeProps) {
     const config = data?.config as any
     const method = config?.method ?? 'GET'
     const url = config?.url ?? ''
+    const label = (data?.label as string) || 'HTTP 请求'
     // 截取 URL 显示（去掉协议前缀，只显示域名和路径）
     const displayUrl = url.replace(/^https?:\/\//, '').substring(0, 30) + (url.length > 30 ? '...' : '')
 
@@ -22,7 +23,7 @@ export default function HttpNode({ data, selected }: NodeProps) {
                 <div className="mr-3 bg-green-700 text-white rounded-lg p-2 shadow-sm">
                     <ICON_MAP.http size={14} />
                 </div>
-                <span className="font-bold">HTTP 请求</span>
+                <span className="font-bold">{label}</span>
             </div>
 
             <div className="space-y-2">

@@ -1,6 +1,6 @@
 import { Edit2Icon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
+import { useFormAutoSave } from '../form-auto-save-wrapper'
 import { NodeSettingsFormProps } from '../types'
 
 export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array'
@@ -34,6 +35,37 @@ const TYPE_LABELS: Record<ParamType, string> = {
     object: '对象',
 }
 
+/**
+ * 默认值输入框占位符映射
+ */
+const DEFAULT_VALUE_PLACEHOLDERS: Record<ParamType, string> = {
+    string: '例如: Hello',
+    number: '例如: 42',
+    boolean: '例如: true 或 false',
+    array: '例如: [1, 2, 3]',
+    object: '例如: {"key": "value"}',
+}
+
+/**
+ * 默认值输入框 - 使用 useWatch 监听 type 变化
+ */
+
+function DefaultValueInput({ control, register }: { control: any; register: any }) {
+    // 使用 useWatch 局部监听 type 字段，只有 type 变化时才重新渲染此组件
+    const paramType = useWatch({ control, name: 'type' }) as ParamType
+
+    return (
+        <Field>
+            <FieldLabel htmlFor="defaultValue">默认值</FieldLabel>
+            <Input id="defaultValue" placeholder={DEFAULT_VALUE_PLACEHOLDERS[paramType] || ''} {...register('defaultValue')} />
+        </Field>
+    )
+}
+
+/**
+ * 参数编辑对话框
+ * 使用 Controller 控制 Select 组件
+ */
 function ParamEditDialog({
     open,
     onOpenChange,
@@ -51,8 +83,7 @@ function ParamEditDialog({
         register,
         handleSubmit,
         formState: { errors },
-        watch,
-        setValue,
+        control,
         reset,
     } = useForm<InputParam>({
         defaultValues: {
@@ -64,8 +95,7 @@ function ParamEditDialog({
         },
     })
 
-    const paramType = watch('type')
-
+    // 当对话框打开时，使用参数数据重置表单
     useEffect(() => {
         if (open) {
             reset(
@@ -100,6 +130,7 @@ function ParamEditDialog({
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    {/* 参数名 - 使用 register */}
                     <Field>
                         <FieldLabel htmlFor="name">
                             参数名 <span className="text-red-500">*</span>
@@ -120,45 +151,39 @@ function ParamEditDialog({
                         <FieldError errors={errors.name ? [errors.name] : undefined} />
                     </Field>
 
+                    {/* 参数类型 - 使用 Controller */}
                     <Field>
                         <FieldLabel htmlFor="type">
                             参数类型 <span className="text-red-500">*</span>
                         </FieldLabel>
                         <FieldContent>
-                            <Select value={paramType} onValueChange={value => setValue('type', value as ParamType)}>
-                                <SelectTrigger className="w-full" id="type">
-                                    <SelectValue placeholder="请选择参数类型" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="string">字符串 (string)</SelectItem>
-                                    <SelectItem value="number">数字 (number)</SelectItem>
-                                    <SelectItem value="boolean">布尔值 (boolean)</SelectItem>
-                                    <SelectItem value="array">数组 (array)</SelectItem>
-                                    <SelectItem value="object">对象 (object)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <Controller
+                                name="type"
+                                control={control}
+                                render={({ field }) => {
+                                    return (
+                                        <Select value={field.value} onValueChange={value => field.onChange(value as ParamType)}>
+                                            <SelectTrigger className="w-full" id="type">
+                                                <SelectValue placeholder="请选择参数类型" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="string">字符串 (string)</SelectItem>
+                                                <SelectItem value="number">数字 (number)</SelectItem>
+                                                <SelectItem value="boolean">布尔值 (boolean)</SelectItem>
+                                                <SelectItem value="array">数组 (array)</SelectItem>
+                                                <SelectItem value="object">对象 (object)</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )
+                                }}
+                            ></Controller>
                         </FieldContent>
                     </Field>
 
-                    <Field>
-                        <FieldLabel htmlFor="defaultValue">默认值</FieldLabel>
-                        <Input
-                            id="defaultValue"
-                            placeholder={
-                                paramType === 'string'
-                                    ? '例如: Hello'
-                                    : paramType === 'number'
-                                      ? '例如: 42'
-                                      : paramType === 'boolean'
-                                        ? '例如: true 或 false'
-                                        : paramType === 'array'
-                                          ? '例如: [1, 2, 3]'
-                                          : '例如: {"key": "value"}'
-                            }
-                            {...register('defaultValue')}
-                        />
-                    </Field>
+                    {/* 默认值 - 提取为单独组件以优化渲染 */}
+                    <DefaultValueInput control={control} register={register} />
 
+                    {/* 参数描述 - 使用 register */}
                     <Field>
                         <FieldLabel htmlFor="description">参数描述</FieldLabel>
                         <FieldContent>
@@ -171,12 +196,17 @@ function ParamEditDialog({
                         </FieldContent>
                     </Field>
 
+                    {/* 必填参数 - 使用 Controller 控制 Checkbox */}
                     <Field>
                         <FieldLabel htmlFor="required" className="mb-0">
                             必填参数
                         </FieldLabel>
                         <FieldContent>
-                            <Checkbox id="required" {...register('required')} />
+                            <Controller
+                                name="required"
+                                control={control}
+                                render={({ field }) => <Checkbox id="required" checked={field.value} onCheckedChange={field.onChange} />}
+                            ></Controller>
                         </FieldContent>
                     </Field>
 
@@ -198,12 +228,22 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
     const [inputs, setInputs] = useState<InputParam[]>((node.data?.config as any)?.inputs || [])
     const [dialogOpen, setDialogOpen] = useState(false)
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
-    const newInputs = useRef(inputs)
 
+    // 自动保存 - 当 inputs 变化时保存
+    const lastSaveRef = useRef<string>('')
     useEffect(() => {
-        newInputs.current = inputs
-        onSave?.({ inputs: newInputs.current })
-    }, [inputs])
+        const currentDataStr = JSON.stringify(inputs)
+        if (lastSaveRef.current === '' || currentDataStr === lastSaveRef.current) {
+            lastSaveRef.current = currentDataStr
+            return
+        }
+
+        const timer = setTimeout(() => {
+            onSave?.({ inputs })
+            lastSaveRef.current = currentDataStr
+        }, 500)
+        return () => clearTimeout(timer)
+    }, [inputs, onSave])
 
     const handleEditParam = (index: number) => {
         setEditingIndex(index)
@@ -221,7 +261,7 @@ export function StartSettingsForm({ node, onSave, onCancel }: NodeSettingsFormPr
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        onSave?.({ inputs: newInputs.current })
+        onSave?.({ inputs })
     }
 
     const handleSaveParam = (data: InputParam) => {

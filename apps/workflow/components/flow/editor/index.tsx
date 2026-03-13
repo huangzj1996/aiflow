@@ -15,6 +15,7 @@ import {
     NodeChange,
     ReactFlow,
     ReactFlowProvider,
+    useReactFlow,
 } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -144,6 +145,9 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
     const [isSaving, setIsSaving] = useState(false)
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
     const [addMenuOpen, setAddMenuOpen] = useState(false)
+
+    const flow = useReactFlow()
+
     // 自动保存定时器引用
     const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -182,7 +186,7 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                 setSelectedNode(updatedNode)
             }
         }
-    }, [nodes])
+    }, [nodes, selectedNode])
 
     // 保存流程图
     const saveWorkflow = useCallback(async () => {
@@ -353,7 +357,12 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
                         onNodeClick={(_, node) => setSelectedNode(node)}
-                        onSelectionChange={({ nodes }) => setSelectedNode(nodes[0] || null)}
+                        onSelectionChange={({ nodes }) => {
+                            if (!nodes[0]) {
+                                setSelectedNode(null)
+                            }
+                            // setSelectedNode(nodes[0] || null)
+                        }}
                         fitView
                         fitViewOptions={fitViewOptions}
                         proOptions={{ hideAttribution: true }}
@@ -366,7 +375,16 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
             </div>
             {selectedNode && (
                 <div className=" absolute top-12 right-4">
-                    <Settings node={selectedNode} onUpdateNode={onUpdateNode} nodes={nodes} edges={edges} />
+                    <Settings
+                        node={selectedNode}
+                        onUpdateNode={onUpdateNode}
+                        onUpdateNodeLabel={onUpdateNodeLabel}
+                        nodes={nodes}
+                        edges={edges}
+                        onClose={() => {
+                            setSelectedNode(null)
+                        }}
+                    />
                 </div>
             )}
         </div>

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { getColor, ICON_MAP } from '../../icon-map'
 import { AvailableNodeOutput, formatVariableExpression, NodeOutputVariable } from '../node-outputs'
 import { NodeKind } from '../types'
+import { VariableTag } from '../variable-renderer'
 import { SlashCommand } from './slash-command'
 import { VariableMention } from './variable-mention'
 interface VariableEditorProps {
@@ -122,52 +123,6 @@ function parseVariableExpression(value: string): { nodeId: string; variableName:
     return null
 }
 
-/**
- * 变量标签组件 - 与富文本中的样式一致
- */
-function VariableTag({
-    nodeOutput,
-    variable,
-    onRemove,
-}: {
-    nodeOutput: AvailableNodeOutput
-    variable: NodeOutputVariable
-    onRemove?: () => void
-}) {
-    const nodeType = nodeOutput.nodeId.split('-')[0] as NodeKind
-    const NodeIcon = ICON_MAP[nodeType]
-    const bgColor = getColor(nodeType)
-
-    return (
-        <span
-            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium"
-            style={{
-                backgroundColor: 'var(--primary-50, #eff6ff)',
-                color: 'var(--primary-700, #1d4ed8)',
-            }}
-        >
-            <span className={`w-4 h-4 rounded flex items-center justify-center text-white ${bgColor}`} style={{ fontSize: '10px' }}>
-                {NodeIcon && <NodeIcon size={10} />}
-            </span>
-            <span className="font-medium">{nodeOutput.nodeLabel}</span>
-            <span className="text-gray-400">/</span>
-            <span className="font-mono">{variable.name}</span>
-            {onRemove && (
-                <button
-                    type="button"
-                    onClick={e => {
-                        e.stopPropagation()
-                        onRemove()
-                    }}
-                    className="ml-0.5 hover:text-red-500 transition-colors"
-                >
-                    <XIcon size={12} />
-                </button>
-            )}
-        </span>
-    )
-}
-
 function SingleVariableSelector({
     value,
     onChange,
@@ -274,7 +229,17 @@ function SingleVariableSelector({
                 className="w-full h-8 px-3 flex items-center justify-between rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 hover:bg-white"
             >
                 {selectedVariable ? (
-                    <VariableTag nodeOutput={selectedVariable.nodeOutput} variable={selectedVariable.variable} onRemove={handleClear} />
+                    <VariableTag
+                        variable={{
+                            nodeId: selectedVariable.nodeOutput.nodeId,
+                            nodeLabel: selectedVariable.nodeOutput.nodeLabel,
+                            variableName: selectedVariable.variable.name,
+                            variableLabel: selectedVariable.variable.label,
+                            variableType: selectedVariable.variable.type,
+                        }}
+                        removable
+                        onRemove={handleClear}
+                    />
                 ) : (
                     <span className="text-muted-foreground">{placeholder || '选择变量'}</span>
                 )}
