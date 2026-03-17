@@ -2,8 +2,6 @@
 // 工作流类型
 // ============================================================
 
-import { NodeKind } from '@/components/flow/handle'
-
 /**
  * 流程节点
  */
@@ -22,7 +20,6 @@ export interface FlowEdge {
     source: string
     target: string
     sourceHandle?: string
-    targetHandle?: string
     [key: string]: unknown
 }
 

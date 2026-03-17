@@ -5,7 +5,7 @@
  *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
  */
 
-import { createWorkflowEngine, WorkflowDefinition } from '../index'
+import { createWorkflowEngine, WorkflowDefinition } from './index.ts'
 
 /**
  * 示例工作流：包含所有节点类型

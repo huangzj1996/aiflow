@@ -30,11 +30,11 @@ export class GraphBuilder {
         // 添加边
         for (const edge of this.workflow.edges) {
             const targets = this.adjacencyList.get(edge.source) || []
-            targets.push(edge.source)
+            targets.push(edge.target)
             this.adjacencyList.set(edge.source, targets)
 
             const sources = this.reverseAdjacencyList.get(edge.target) || []
-            sources.push(edge.target)
+            sources.push(edge.source)
             this.reverseAdjacencyList.set(edge.target, sources)
 
             const degree = this.inDegree.get(edge.target) || 0
@@ -52,6 +52,7 @@ export class GraphBuilder {
 
         // 创建入度副本
         const inDegreeCopy = new Map(this.inDegree)
+
         // 找到所有入度为0的节点（起始节点）
         for (const [nodeId, degree] of inDegreeCopy) {
             if (degree === 0 && !this.excludedNodes.has(nodeId)) {
@@ -69,20 +70,18 @@ export class GraphBuilder {
             visited.add(nodeId)
 
             const node = this.workflow.nodes.find(n => n.id === nodeId)
-
             if (node) {
                 result.push(node)
             }
 
             // 更新后继节点的入度
             const successors = this.adjacencyList.get(nodeId) || []
-
             for (const successor of successors) {
-                if (this.excludedNodes.has(successor)) {
-                    continue
-                }
-                const degree = inDegreeCopy.get(successor)!
-                inDegreeCopy.set(successor, degree - 1)
+                if (this.excludedNodes.has(successor)) continue
+
+                const degree = inDegreeCopy.get(successor)! - 1
+                inDegreeCopy.set(successor, degree)
+
                 if (degree === 0) {
                     queue.push(successor)
                 }
@@ -156,7 +155,7 @@ export class GraphBuilder {
         return Array.from(result)
     }
     /**
-     * 检查是否有环 Kahn算法
+     * 检查是否有环
      */
     hasCycle(): boolean {
         const visited = new Set<string>()
@@ -184,36 +183,6 @@ export class GraphBuilder {
             }
         }
 
-        return false
-    }
-
-    /**
-     * 检查是否有环 深度优先算法
-     */
-    hasCycleDfs(): boolean {
-        const state = new Map() // 0未访问, 1访问中, 2已完成
-
-        for (const node of this.workflow.nodes) {
-            if (state.has(node.id)) {
-                continue
-            }
-            state.set(node.id, 0)
-        }
-
-        const dfs = (nodeId: string): boolean => {
-            state.set(nodeId, 1)
-            const successors = this.adjacencyList.get(nodeId) || []
-            for (const successor of successors) {
-                if (state.get(successor) === 1) return true
-                if (state.get(successor) === 0 && dfs(successor)) return true
-            }
-            state.set(nodeId, 2)
-            return false
-        }
-
-        for (const node of this.workflow.nodes) {
-            if (state.get(node.id) === 0 && dfs(node.id)) return true
-        }
         return false
     }
 }

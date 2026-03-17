@@ -17,6 +17,7 @@ interface FlowEditorHeaderProps {
     lastSavedAt?: string | null
     // 保存回调
     onSave?: () => void
+    onTestRun?: () => void
 }
 
 export const FlowEditorHeader = memo(function FlowEditorHeader({
@@ -25,6 +26,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
     isSaving,
     lastSavedAt,
     onSave,
+    onTestRun,
 }: FlowEditorHeaderProps) {
     return (
         <div className="flex items-center justify-between px-4 py-2 bg-transparent absolute top-0 left-0 w-full z-10">
@@ -41,7 +43,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
             </div>
             <div className="flex gap-2 shrink-0">
                 <ButtonGroup>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={onTestRun}>
                         <Play /> 测试运行
                     </Button>
                     <Button variant="outline" size="icon-sm">

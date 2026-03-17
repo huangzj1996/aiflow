@@ -25,6 +25,7 @@ import { workflowService } from '@/lib/services/workflow-service'
 
 import { nodeTypes } from '../nodes'
 import Settings from '../settings'
+import { TestRunPanel } from '../test-run'
 import { FlowEditorContext } from './context'
 import { FlowEditorHeader } from './header'
 
@@ -145,7 +146,7 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
     const [isSaving, setIsSaving] = useState(false)
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
     const [addMenuOpen, setAddMenuOpen] = useState(false)
-
+    const [testRunOpen, setTestRunOpen] = useState(false)
     const flow = useReactFlow()
 
     // 自动保存定时器引用
@@ -346,6 +347,7 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                 isSaving={isSaving}
                 lastSavedAt={formatLastSavedTime()}
                 onSave={saveWorkflow}
+                onTestRun={() => setTestRunOpen(true)}
             />
             <div className="flex-1">
                 <FlowEditorContext.Provider value={{ nodes, onAddNode, hasStartNode }}>
@@ -368,13 +370,22 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                         proOptions={{ hideAttribution: true }}
                     >
                         <Background bgColor="#f4f6fb" />
-                        <MiniMap pannable zoomable style={{ right: selectedNode ? 410 : 0, width: 120, height: 80 }} />
+                        <MiniMap
+                            pannable
+                            zoomable
+                            style={{
+                                right: selectedNode && testRunOpen ? 830 : selectedNode ? 400 : testRunOpen ? 420 : 0,
+                                width: 120,
+                                height: 80,
+                            }}
+                        />
                         <Controls />
                     </ReactFlow>
                 </FlowEditorContext.Provider>
             </div>
-            {selectedNode && (
-                <div className=" absolute top-12 right-4">
+            {/* Right side panels - can show both side by side */}
+            <div className=" absolute top-12 right-4 flex gap-1">
+                {selectedNode && (
                     <Settings
                         node={selectedNode}
                         onUpdateNode={onUpdateNode}
@@ -385,8 +396,9 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                             setSelectedNode(null)
                         }}
                     />
-                </div>
-            )}
+                )}
+                {testRunOpen && <TestRunPanel open={testRunOpen} onOpenChange={setTestRunOpen} appId={appId} nodes={nodes} edges={edges} />}
+            </div>
         </div>
     )
 }

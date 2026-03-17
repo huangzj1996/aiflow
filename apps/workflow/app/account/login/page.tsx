@@ -1,6 +1,6 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 
@@ -15,8 +15,11 @@ interface LoginFormValues {
     password: string
     name?: string
 }
-
-export default function LoginPage() {
+/**
+ * 直接读取搜索参数useSearchParams()而不使用 Suspense 边界会导致整个页面都采用客户端渲染。这可能会导致页面在客户端 JavaScript 加载完成之前一片空白。
+ * https://nextjs.org/docs/messages/missing-suspense-with-csr-bailout
+ */
+function LoginForm() {
     const form = useForm<LoginFormValues>({
         defaultValues: {
             email: 'huangzj15@lenovo.com',
@@ -213,5 +216,13 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense>
+            <LoginForm />
+        </Suspense>
     )
 }

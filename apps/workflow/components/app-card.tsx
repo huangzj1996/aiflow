@@ -50,13 +50,13 @@ export function AppCard({ app, onDelete, onAppUpdated }: AppCardProps) {
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
 
-    const handleEditClick = (ev: React.MouseEvent<HTMLDivElement>) => {
+    const handleEditClick = (ev: any) => {
         ev.preventDefault()
         setEditDialogOpen(true)
         setDropdownOpen(false)
     }
 
-    const handleDelete = async (ev: React.MouseEvent<HTMLDivElement>) => {
+    const handleDelete = async (ev: any) => {
         ev.preventDefault()
         ev.stopPropagation()
         setDropdownOpen(false) // 关闭 dropdown
@@ -163,7 +163,7 @@ export function AppCard({ app, onDelete, onAppUpdated }: AppCardProps) {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>取消</AlertDialogCancel>
-                        <AlertDialogAction align="end" onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
+                        <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-red-600 hover:bg-red-700">
                             {isDeleting ? '删除中...' : '确认删除'}
                         </AlertDialogAction>
                     </AlertDialogFooter>

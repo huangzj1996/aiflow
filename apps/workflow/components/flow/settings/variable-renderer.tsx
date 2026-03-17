@@ -51,7 +51,6 @@ export function VariableTag({ variable, removable, onRemove, className }: Variab
     const nodeType = variable.nodeId?.split('-')[0] as keyof typeof ICON_MAP
     const NodeIcon = ICON_MAP[nodeType]
     const bgColor = getColor(nodeType)
-
     return (
         <span
             className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium ${className}`}

@@ -19,6 +19,11 @@ import type {
 } from '../types'
 
 /**
+ * 日志回调类型
+ */
+export type LogCallback = (entry: ExecutionLogEntry) => void
+
+/**
  * 默认执行日志器实现
  */
 export class DefaultExecutionLogger implements ExecutionLogger {
@@ -26,10 +31,12 @@ export class DefaultExecutionLogger implements ExecutionLogger {
     private executionId: string
     private verbose: boolean
     private currentNodeId: string | null = null
+    private onLog?: LogCallback
 
-    constructor(executionId: string, verbose: boolean = false) {
+    constructor(executionId: string, verbose: boolean = false, onLog?: LogCallback) {
         this.executionId = executionId
         this.verbose = verbose
+        this.onLog = onLog
     }
 
     private log(level: LogLevel, phase: LogPhase, message: string, data?: Record<string, unknown>): void {
@@ -43,6 +50,9 @@ export class DefaultExecutionLogger implements ExecutionLogger {
         }
 
         this.entries.push(entry)
+
+        // 调用日志回调（用于实时推送）
+        this.onLog?.(entry)
 
         // 控制台输出
         if (this.verbose || level === 'error') {
@@ -218,7 +228,10 @@ export class DefaultExecutionLogger implements ExecutionLogger {
 
 /**
  * 创建执行日志器
+ * @param executionId 执行ID
+ * @param verbose 是否启用详细日志
+ * @param onLog 日志回调（用于实时推送）
  */
-export function createExecutionLogger(executionId: string, verbose: boolean = false): ExecutionLogger {
-    return new DefaultExecutionLogger(executionId, verbose)
+export function createExecutionLogger(executionId: string, verbose: boolean = false, onLog?: LogCallback): ExecutionLogger {
+    return new DefaultExecutionLogger(executionId, verbose, onLog)
 }

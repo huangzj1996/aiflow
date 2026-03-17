@@ -5,7 +5,7 @@ import { Handle } from '../handle'
 import { ICON_MAP } from '../icon-map'
 
 const LLMNode = ({ data, selected }: NodeProps) => {
-    const [model, setModel] = useState<string>((data?.config as any)?.model ?? 'qwen3-0.6b')
+    const [model, setModel] = useState<string>((data?.config as any)?.model ?? 'qwen3:0.6b')
     const [prompt, setPrompt] = useState<string>((data?.config as any)?.prompt ?? '')
 
     const label = (data?.label as string) || '大模型'

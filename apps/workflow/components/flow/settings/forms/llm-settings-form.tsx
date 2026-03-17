@@ -76,7 +76,7 @@ export function LLMSettingsForm({ node, onCancel, onSave, flowContext }: NodeSet
                                     <SelectItem value="gpt-3.5-turbo">gpt-3.5-turbo</SelectItem>
                                     <SelectItem value="gpt-4">gpt-4</SelectItem>
                                     <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
-                                    <SelectItem value="qwen3-0.6b">qwen3-0.6b</SelectItem>
+                                    <SelectItem value="qwen3:0.6b">qwen3:0.6b</SelectItem>
                                     <SelectItem value="qwen-max">qwen-max</SelectItem>
                                 </SelectContent>
                             </Select>

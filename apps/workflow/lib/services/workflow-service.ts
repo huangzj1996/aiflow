@@ -53,14 +53,14 @@ class WorkflowService {
      * 获取应用工作流
      */
     async getByAppId(appId: string): Promise<WorkflowData> {
-        return this.request<WorkflowData>(`/api/apps/${appId}/workflows`)
+        return this.request<WorkflowData>(`/api/apps/${appId}/workflow`)
     }
 
     /**
      * 保存工作流
      */
     async save(appId: string, workflow: SaveWorkflowRequest): Promise<WorkflowData> {
-        return this.request<WorkflowData>(`/api/apps/${appId}/workflows`, {
+        return this.request<WorkflowData>(`/api/apps/${appId}/workflow`, {
             method: 'POST',
             body: JSON.stringify(workflow),
         })

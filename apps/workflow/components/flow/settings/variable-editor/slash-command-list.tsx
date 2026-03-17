@@ -110,11 +110,11 @@ export const SlashCommandList = ({ items, command, ref }: SlashCommandListProps)
     }
 
     return (
-        <div className="bg-white border rounded-lg shadow-lg min-w-[300px]">
+        <div className="bg-white border rounded-lg shadow-lg min-w-75">
             <div className="px-3 py-2 border-b bg-muted/30">
                 <span className="text-xs font-medium text-muted-foreground">选择变量</span>
             </div>
-            <div className="max-h-[220px] overflow-auto">
+            <div className="max-h-55 overflow-auto">
                 {groupedItems.map(group => {
                     const { nodeOutput } = group
                     const nodeType = nodeOutput.nodeId.split('-')[0] as NodeKind

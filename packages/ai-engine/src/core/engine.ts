@@ -1,6 +1,14 @@
 import { createExecutionLogger } from '../logger'
 import { createDefaultRegistry, NodeRegistry } from '../nodes'
-import { NodeExecutionResult, ValidationResult, WorkflowDefinition, WorkflowInput, WorkflowNode, WorkflowResult } from '../types'
+import type {
+    ExecuteOptions,
+    NodeExecutionResult,
+    ValidationResult,
+    WorkflowDefinition,
+    WorkflowInput,
+    WorkflowNode,
+    WorkflowResult,
+} from '../types'
 import { createDefaultWorkflowValidator, DefaultWorkflowValidator } from '../validators'
 import { createExecutionContext } from './context'
 import { GraphBuilder } from './graph-builder'
@@ -22,9 +30,11 @@ export interface WorkflowEngineConfig {
  */
 export interface IWorkflowEngine {
     /**
-     * 执行工作流
+     * @param workflow 工作流定义
+     * @param inputs 输入参数
+     * @param options 执行选项（可选，用于实时回调）
      */
-    execute(workflow: WorkflowDefinition, inputs: WorkflowInput): Promise<WorkflowResult>
+    execute(workflow: WorkflowDefinition, inputs: WorkflowInput, options?: ExecuteOptions): Promise<WorkflowResult>
     /**
      * 验证工作流定义
      */
@@ -54,10 +64,16 @@ export class WorkflowEngine implements IWorkflowEngine {
         this.workflowValidator = createDefaultWorkflowValidator()
     }
 
-    async execute(workflow: WorkflowDefinition, inputs: WorkflowInput): Promise<WorkflowResult> {
+    /**
+     * 执行工作流
+     * @param workflow 工作流定义
+     * @param inputs 输入参数
+     * @param options 执行选项（可选，用于实时回调）
+     */
+    async execute(workflow: WorkflowDefinition, inputs: WorkflowInput, options?: ExecuteOptions): Promise<WorkflowResult> {
         const executionId = this.generateExecutionId()
         const startTime = Date.now()
-        const logger = createExecutionLogger(executionId, this.config.verbose)
+        const logger = createExecutionLogger(executionId, this.config.verbose, options?.onLog)
 
         logger.info('Workflow execution started', {
             workflowId: workflow.id,
@@ -80,7 +96,7 @@ export class WorkflowEngine implements IWorkflowEngine {
             const graphBuilder = new GraphBuilder(workflow)
 
             // 检查是否有环
-            if (graphBuilder.hasCycleDfs()) {
+            if (graphBuilder.hasCycle()) {
                 throw new Error('Workflow contains a cycle')
             }
 
@@ -96,13 +112,21 @@ export class WorkflowEngine implements IWorkflowEngine {
             const executedNodes = new Set<string>()
 
             for (const node of executionOrder) {
+                // 跳过已执行的节点
                 if (executedNodes.has(node.id)) {
                     continue
                 }
 
                 logger.setCurrentNode(node.id)
 
+                // 调用节点开始回调
+                const nodeName = (node.data.label as string) || node.id
+                options?.onNodeStart?.(node.id, node.type, nodeName)
+
                 const result = await this.executeNode(node, context, logger)
+
+                // 调用节点结束回调
+                options?.onNodeEnd?.(node.id, result)
 
                 if (!result.success) {
                     throw result.error || new Error(`Node ${node.id} execution failed`)
@@ -202,4 +226,11 @@ export class WorkflowEngine implements IWorkflowEngine {
         const random = Math.random().toString(36).substring(2, 8)
         return `exec-${timestamp}-${random}`
     }
+}
+
+/**
+ * 创建工作流引擎实例
+ */
+export function createWorkflowEngine(config?: WorkflowEngineConfig): WorkflowEngine {
+    return new WorkflowEngine(config)
 }

@@ -49,6 +49,9 @@ export interface ValidationResult {
     errors?: string[]
 }
 
+/**
+ * 工作流执行结果
+ */
 export interface WorkflowResult {
     success: boolean
     error?: Error
@@ -56,4 +59,16 @@ export interface WorkflowResult {
     executionId: string
     duration: number
     logs: import('./logger').ExecutionLogEntry[]
+}
+
+/**
+ * 工作流执行选项（用于实时回调）
+ */
+export interface ExecuteOptions {
+    /** 节点开始执行回调 */
+    onNodeStart?: (nodeId: string, nodeType: NodeKind, nodeName: string) => void
+    /** 节点结束执行回调 */
+    onNodeEnd?: (nodeId: string, result: import('./logger').NodeExecutionResult) => void
+    /** 日志记录回调 */
+    onLog?: (entry: import('./logger').ExecutionLogEntry) => void
 }

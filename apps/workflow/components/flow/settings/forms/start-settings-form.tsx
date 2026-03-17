@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 
-import { useFormAutoSave } from '../form-auto-save-wrapper'
 import { NodeSettingsFormProps } from '../types'
 
 export type ParamType = 'string' | 'number' | 'boolean' | 'object' | 'array'
