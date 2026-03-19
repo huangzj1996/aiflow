@@ -1,6 +1,7 @@
 import { createWorkflowEngine, GraphBuilder, NodeKind, WorkflowDefinition } from '@aiflow-demo/ai-engine'
 import { NextRequest } from 'next/server'
 
+import { ExecutionStatus } from '@/generated/prisma/enums'
 import { apiError, ErrorCode } from '@/lib/api-response'
 import { getCurrentUserId } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -12,6 +13,20 @@ import {
     WorkflowEndEventData,
     WorkflowStartEventData,
 } from '@/lib/types/test-run'
+
+//  NodeTrace for storing in database
+interface NodeTraceRecord {
+    nodeId: string
+    nodeName: string
+    nodeType: string
+    status: 'pending' | 'running' | 'success' | 'error'
+    startTime?: string
+    endTime?: string
+    duration?: number
+    inputs?: Record<string, unknown>
+    outputs?: Record<string, unknown>
+    error?: string
+}
 
 // ============================================================
 // Types
@@ -114,11 +129,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 const startTime = Date.now()
                 let totalTokens = 0
 
+                const nodeTraces: Record<string, NodeTraceRecord> = {}
+
+                // Generate execution ID
+                const executionId = `exec-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`
+
+                // Create execution record in database
+                const execution = await prisma.workflowExecution.create({
+                    data: {
+                        executionId,
+                        status: ExecutionStatus.RUNNING,
+                        inputs: inputs as object,
+                        appId,
+                        startedAt: new Date(),
+                    },
+                })
+
                 try {
                     const engine = createWorkflowEngine({ verbose: true })
-
-                    // Generate execution ID
-                    const executionId = `exec-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`
 
                     // Send workflow start event
                     send<WorkflowStartEventData>({
@@ -129,6 +157,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
                     const result = await engine.execute(workflow, inputs, {
                         onNodeStart(nodeId, nodeType, nodeName) {
+                            // Track node trace
+                            nodeTraces[nodeId] = {
+                                nodeId,
+                                nodeName: nodeName || nodeId,
+                                nodeType,
+                                status: 'running',
+                                startTime: new Date().toISOString(),
+                            }
+
                             send<NodeStartEventData>({
                                 type: 'node:start',
                                 data: { nodeId, nodeType, nodeName },
@@ -137,15 +174,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                         },
                         onNodeEnd(nodeId, result) {
                             // Update total tokens
-                            if (result.outputs?.tokens !== undefined) {
-                                totalTokens += result.outputs.tokens as number
+                            if (result.outputs?.tokens && typeof result.outputs.tokens === 'number') {
+                                totalTokens += result.outputs.tokens
                             }
+
+                            // Update node trace
+                            if (nodeTraces[nodeId]) {
+                                nodeTraces[nodeId].status = result.success ? 'success' : 'error'
+                                nodeTraces[nodeId].endTime = new Date().toISOString()
+                                nodeTraces[nodeId].duration = result.duration
+                                nodeTraces[nodeId].outputs = result.outputs
+                                nodeTraces[nodeId].inputs = result.inputs
+                                if (result.error) {
+                                    nodeTraces[nodeId].error = result.error.message
+                                }
+                            }
+
                             send<NodeEndEventData>({
                                 type: 'node:end',
                                 data: {
                                     nodeId,
                                     success: result.success,
                                     outputs: result.outputs,
+                                    inputs: result.inputs,
                                     error: result.error,
                                     duration: result.duration,
                                     matchedBranch: result.matchedBranch,
@@ -168,6 +219,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
                     const duration = Date.now() - startTime
 
+                    // Update execution record with success
+                    await prisma.workflowExecution.update({
+                        where: { id: execution.id },
+                        data: {
+                            status: result.success ? ExecutionStatus.SUCCESS : ExecutionStatus.ERROR,
+                            outputs: result.outputs as object,
+                            error: result?.error?.message,
+                            duration,
+                            totalTokens,
+                            nodeTraces: nodeTraces as object,
+                            completedAt: new Date(),
+                        },
+                    })
+
                     // Send workflow end event
                     send<WorkflowEndEventData>({
                         type: 'workflow:end',
@@ -184,10 +249,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                     // eslint-disable-next-line no-console
                     console.error('Workflow execution error:', error)
 
+                    const duration = Date.now() - startTime
+                    const errorMessage = error instanceof Error ? error.message : '执行工作流失败'
+
+                    // Update execution record with error
+                    await prisma.workflowExecution.update({
+                        where: { id: execution.id },
+                        data: {
+                            status: ExecutionStatus.ERROR,
+                            error: errorMessage,
+                            duration,
+                            totalTokens,
+                            nodeTraces: nodeTraces as object,
+                            completedAt: new Date(),
+                        },
+                    })
+
                     send<ErrorEventData>({
                         type: 'error',
                         data: {
-                            message: error instanceof Error ? error.message : '执行工作流失败',
+                            message: errorMessage,
                         },
                         timestamp: new Date().toISOString(),
                     })

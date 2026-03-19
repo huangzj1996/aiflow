@@ -21,6 +21,7 @@ export interface NodeTraceInfo {
     startTime?: Date
     endTime?: Date
     duration?: number
+    inputs?: Record<string, unknown>
     outputs?: Record<string, unknown>
     error?: string
     logs: ExecutionLogEntry[]

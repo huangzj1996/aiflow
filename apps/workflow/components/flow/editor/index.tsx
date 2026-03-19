@@ -23,11 +23,12 @@ import { v4 as uuidv4 } from 'uuid'
 
 import { workflowService } from '@/lib/services/workflow-service'
 
+import { ExecutionDetailPanel } from '../execution-history'
 import { nodeTypes } from '../nodes'
 import Settings from '../settings'
 import { TestRunPanel } from '../test-run'
 import { FlowEditorContext } from './context'
-import { FlowEditorHeader } from './header'
+import { type EditorMode, FlowEditorHeader } from './header'
 
 type NodeKind = 'start' | 'llm' | 'condition' | 'end' | 'http'
 
@@ -147,7 +148,16 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
     const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null)
     const [addMenuOpen, setAddMenuOpen] = useState(false)
     const [testRunOpen, setTestRunOpen] = useState(false)
-    const flow = useReactFlow()
+
+    const [selectedExecutionId, setSelectedExecutionId] = useState<string | null>(null)
+
+    // Derive mode from state
+    // edit mode: normal editing with optional settings and test run panels
+    // detail mode: viewing execution history details
+    const mode: EditorMode = useMemo(() => {
+        if (selectedExecutionId) return 'detail'
+        return 'edit'
+    }, [selectedExecutionId])
 
     // 自动保存定时器引用
     const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -339,15 +349,36 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
         }
         return lastSavedAt.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
     }, [lastSavedAt])
+
+    // 进入测试运行模式
+    const handleTestRun = () => {
+        setTestRunOpen(true)
+        setSelectedNode(null)
+        setSelectedExecutionId(null)
+    }
+
+    // 退出详情/测试运行模式
+    const handleExit = () => {
+        setTestRunOpen(false)
+        setSelectedExecutionId(null)
+    }
+
     return (
         <div className="h-full relative flex flex-col">
             <FlowEditorHeader
                 appName={appName}
+                appId={appId}
+                mode={mode}
                 hasUnsavedChanges={hasUnsavedChanges}
                 isSaving={isSaving}
                 lastSavedAt={formatLastSavedTime()}
                 onSave={saveWorkflow}
-                onTestRun={() => setTestRunOpen(true)}
+                onTestRun={handleTestRun}
+                onExitTestRun={handleExit}
+                onSelectExecution={executionId => {
+                    setSelectedExecutionId(executionId)
+                    setSelectedNode(null)
+                }}
             />
             <div className="flex-1">
                 <FlowEditorContext.Provider value={{ nodes, onAddNode, hasStartNode }}>
@@ -358,12 +389,15 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                         onConnect={onConnect}
                         onNodesChange={onNodesChange}
                         onEdgesChange={onEdgesChange}
-                        onNodeClick={(_, node) => setSelectedNode(node)}
-                        onSelectionChange={({ nodes }) => {
-                            if (!nodes[0]) {
-                                setSelectedNode(null)
+                        onNodeClick={(_, node) => {
+                            if (mode === 'edit') {
+                                setSelectedNode(node)
                             }
-                            // setSelectedNode(nodes[0] || null)
+                        }}
+                        onSelectionChange={({ nodes }) => {
+                            if (mode === 'edit') {
+                                setSelectedNode(nodes[0] || null)
+                            }
                         }}
                         fitView
                         fitViewOptions={fitViewOptions}
@@ -374,7 +408,16 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                             pannable
                             zoomable
                             style={{
-                                right: selectedNode && testRunOpen ? 830 : selectedNode ? 400 : testRunOpen ? 420 : 0,
+                                right:
+                                    mode === 'detail'
+                                        ? 420
+                                        : selectedNode && testRunOpen
+                                          ? 830
+                                          : selectedNode
+                                            ? 400
+                                            : testRunOpen
+                                              ? 420
+                                              : 0,
                                 width: 120,
                                 height: 80,
                             }}
@@ -385,19 +428,35 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
             </div>
             {/* Right side panels - can show both side by side */}
             <div className=" absolute top-12 right-4 flex gap-1">
-                {selectedNode && (
-                    <Settings
-                        node={selectedNode}
-                        onUpdateNode={onUpdateNode}
-                        onUpdateNodeLabel={onUpdateNodeLabel}
+                {mode === 'detail' && (
+                    <ExecutionDetailPanel
+                        open={!!selectedExecutionId}
+                        onOpenChange={open => !open && setSelectedExecutionId(null)}
+                        appId={appId}
+                        executionId={selectedExecutionId}
                         nodes={nodes}
-                        edges={edges}
-                        onClose={() => {
-                            setSelectedNode(null)
-                        }}
                     />
                 )}
-                {testRunOpen && <TestRunPanel open={testRunOpen} onOpenChange={setTestRunOpen} appId={appId} nodes={nodes} edges={edges} />}
+
+                {mode === 'edit' && (
+                    <>
+                        {selectedNode && (
+                            <Settings
+                                node={selectedNode}
+                                onUpdateNode={onUpdateNode}
+                                onUpdateNodeLabel={onUpdateNodeLabel}
+                                nodes={nodes}
+                                edges={edges}
+                                onClose={() => {
+                                    setSelectedNode(null)
+                                }}
+                            />
+                        )}
+                        {testRunOpen && (
+                            <TestRunPanel open={testRunOpen} onOpenChange={setTestRunOpen} appId={appId} nodes={nodes} edges={edges} />
+                        )}
+                    </>
+                )}
             </div>
         </div>
     )

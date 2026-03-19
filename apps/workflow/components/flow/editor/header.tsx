@@ -1,5 +1,5 @@
 import { IconHistory } from '@tabler/icons-react'
-import { ChevronDownIcon, History, Play, PlayCircle } from 'lucide-react'
+import { ArrowLeftIcon, ChevronDownIcon, History, Play, PlayCircle } from 'lucide-react'
 import { memo } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -7,7 +7,13 @@ import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
 
+import { ExecutionHistoryDropdown } from '../execution-history'
+
+export type EditorMode = 'edit' | 'detail'
+
 interface FlowEditorHeaderProps {
+    appId?: string
+    mode?: EditorMode
     appName?: string
     // 是否有未保存的变更
     hasUnsavedChanges?: boolean
@@ -18,16 +24,42 @@ interface FlowEditorHeaderProps {
     // 保存回调
     onSave?: () => void
     onTestRun?: () => void
+    onExitTestRun?: () => void
+    onSelectExecution?: (executionId: string) => void
 }
 
 export const FlowEditorHeader = memo(function FlowEditorHeader({
     appName,
+    appId = '',
+    mode = 'edit',
     hasUnsavedChanges,
     isSaving,
     lastSavedAt,
     onSave,
     onTestRun,
+    onExitTestRun,
+    onSelectExecution,
 }: FlowEditorHeaderProps) {
+    // Detail Mode Header (viewing execution history)
+    if (mode === 'detail') {
+        return (
+            <div className="flex items-center justify-between px-4 py-2 bg-transparent absolute top-0 left-0 w-full z-10">
+                <div className="text-sm font-medium">执行详情</div>
+                <Button variant="outline" size="sm" onClick={onExitTestRun}>
+                    <ArrowLeftIcon className="h-4 w-4 mr-1" />
+                    返回编辑
+                </Button>
+            </div>
+        )
+    }
+
+    // Edit Mode Header
+    const historyButton = (
+        <Button variant="outline" size="icon-sm">
+            <History />
+        </Button>
+    )
+
     return (
         <div className="flex items-center justify-between px-4 py-2 bg-transparent absolute top-0 left-0 w-full z-10">
             <div className="text-xs text-muted-foreground">
@@ -46,9 +78,13 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                     <Button variant="outline" size="sm" onClick={onTestRun}>
                         <Play /> 测试运行
                     </Button>
-                    <Button variant="outline" size="icon-sm">
-                        <History />
-                    </Button>
+                    {appId && onSelectExecution ? (
+                        <ExecutionHistoryDropdown appId={appId} onSelectExecution={onSelectExecution}>
+                            {historyButton}
+                        </ExecutionHistoryDropdown>
+                    ) : (
+                        historyButton
+                    )}
                 </ButtonGroup>
 
                 <Button variant="outline" size="sm" disabled={!hasUnsavedChanges || isSaving} onClick={onSave}>

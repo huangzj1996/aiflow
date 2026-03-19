@@ -70,6 +70,8 @@ export interface HTTPResponseLog {
 
 /** 节点执行结果 */
 export interface NodeExecutionResult {
+    /** 节点输入（从上游节点输出解析后的值） */
+    inputs?: Record<string, unknown>
     success: boolean
     error?: Error
     outputs: Record<string, unknown>

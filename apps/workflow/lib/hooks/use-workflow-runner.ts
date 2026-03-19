@@ -206,6 +206,7 @@ export function useWorkflowRunner({ appId, nodes, edges }: UseWorkflowRunnerOpti
                             endTime: new Date(event.timestamp),
                             duration: data.duration,
                             outputs: data.outputs,
+                            inputs: data.inputs,
                             error: data.error?.message,
                         })
                     }

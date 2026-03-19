@@ -199,7 +199,26 @@ export class WorkflowEngine implements IWorkflowEngine {
             throw new Error(`No executor registered for node type: ${node.type}`)
         }
 
+        const nodeInputs: Record<string, unknown> = {}
+        const upstreamNodes = context.getUpstreamNodes(node.id)
+
+        for (const upstreamId of upstreamNodes) {
+            const outputs = context.variables.getNodeOutputs(upstreamId)
+            if (outputs) {
+                // Merge upstream outputs into node inputs
+                Object.assign(nodeInputs, outputs)
+            }
+        }
+
+        // Also include workflow inputs for start node
+        if (node.type === 'start') {
+            Object.assign(nodeInputs, context.inputs)
+        }
+
         const result = await executor.execute(node.id, node.data.config || {}, context, logger)
+
+        // Add inputs to result
+        result.inputs = nodeInputs
 
         return result
     }

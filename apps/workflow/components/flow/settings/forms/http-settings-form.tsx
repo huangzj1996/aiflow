@@ -38,34 +38,93 @@ export interface HttpNodeConfig {
 }
 
 /**
- * 键值对值编辑器组件 - 使用 Controller 避免父组件重新渲染
+ * 键值对表格组件
  */
+interface KeyValueTableProps {
+    fields: Array<{ id: string; key: string; value: string }>
+    control: any
+    availableOutputs: ReturnType<typeof getAvailableNodeOutputs>
+    onRemove: (id: number) => void
+    onAdd: () => void
+    namePrefix: 'headers' | 'params' | 'formData'
+    keyPlaceholder: string
+    valuePlaceholder: string
+    keyLabel?: string
+    valueLabel?: string
+}
 
 function KeyValueEditor({
+    fields,
     control,
-    name,
+    namePrefix,
+    keyPlaceholder,
+    valuePlaceholder,
+    onAdd,
+    onRemove,
     availableOutputs,
-    placeholder,
-}: {
-    control: any
-    name: `headers.${number}.value` | `params.${number}.value` | `formData.${number}.value`
-    availableOutputs: ReturnType<typeof getAvailableNodeOutputs>
-    placeholder: string
-}) {
+    keyLabel = 'Key',
+    valueLabel = 'Value',
+}: KeyValueTableProps) {
     return (
-        <Controller
-            name={name}
-            control={control}
-            render={({ field }) => (
-                <VariableEditor
-                    value={field.value}
-                    onChange={field.onChange}
-                    availableOutputs={availableOutputs}
-                    placeholder={placeholder}
-                    singleLine
-                />
-            )}
-        />
+        <div className="border rounded-md overflow-hidden">
+            <table className="w-full">
+                <thead className="bg-muted/50">
+                    <tr className="text-left text-xs text-muted-foreground">
+                        <th className="px-3 py-2 font-medium w-1/2">{keyLabel}</th>
+                        <th className="px-3 py-2 font-medium w-1/2">{valueLabel}</th>
+                        <th className="px-2 py-2 font-medium w-10 text-center">操作</th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y">
+                    {fields.map((field, index) => (
+                        <tr key={field.id}>
+                            <td className="px-3 py-2 align-top">
+                                <Input
+                                    placeholder={keyPlaceholder}
+                                    className="h-8 text-sm"
+                                    {...control.register(`${namePrefix}.${index}.key` as const)}
+                                />
+                            </td>
+                            <td className="px-3 py-2 align-top">
+                                <Controller
+                                    name={`${namePrefix}.${index}.value` as const}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <VariableEditor
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            availableOutputs={availableOutputs}
+                                            placeholder={valuePlaceholder}
+                                            minHeight="60px"
+                                            className="text-sm"
+                                            hideBorder
+                                        />
+                                    )}
+                                />
+                            </td>
+                            <td className="px-2 py-2 text-center align-top">
+                                <Button type="button" variant="ghost" size="icon-sm" onClick={() => onRemove(index)} className="mx-auto">
+                                    <TrashIcon size={14} />
+                                </Button>
+                            </td>
+                        </tr>
+                    ))}
+                    {fields.length === 0 && (
+                        <tr>
+                            <td colSpan={3} className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                暂无数据，点击下方按钮添加
+                            </td>
+                        </tr>
+                    )}
+                </tbody>
+            </table>
+            <div className="border-t p-2">
+                <Button type="button" variant="outline" size="sm" className="w-full" onClick={onAdd}>
+                    <PlusIcon size={14} className="mr-1" />
+                    添加
+                </Button>
+            </div>
+        </div>
     )
 }
 
@@ -129,8 +188,8 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
 
     // 自动保存 - 使用 control 配合 useWatch
     useFormAutoSaveWithControl(control, onSave, true)
-    // 使用 useWatch 局部监听需要条件渲染的字段，避免整个表单重新渲染
 
+    // 使用 useWatch 局部监听需要条件渲染的字段，避免整个表单重新渲染
     const method = useWatch({ control, name: 'method' })
     const bodyType = useWatch({ control, name: 'bodyType' })
 
@@ -161,7 +220,7 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                 <FieldLabel htmlFor="url">
                     请求 URL <span className="text-red-500">*</span>
                 </FieldLabel>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-1">
                     {/* Method Select - 使用 Controller */}
                     <Controller
                         name="method"
@@ -182,21 +241,19 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
                         )}
                     />
                     {/* URL - 使用 Controller */}
-                    <div className="flex-1">
-                        <Controller
-                            name="url"
-                            control={control}
-                            render={({ field }) => (
-                                <VariableEditor
-                                    value={field.value || ''}
-                                    onChange={field.onChange}
-                                    availableOutputs={availableOutputs}
-                                    placeholder="https://api.example.com/endpoint"
-                                    singleLine
-                                />
-                            )}
-                        />
-                    </div>
+                    <Controller
+                        name="url"
+                        control={control}
+                        render={({ field }) => (
+                            <VariableEditor
+                                value={field.value || ''}
+                                onChange={field.onChange}
+                                availableOutputs={availableOutputs}
+                                placeholder="https://api.example.com/endpoint"
+                                minHeight="70px"
+                            />
+                        )}
+                    />
                 </div>
                 {errors.url && <p className="text-sm text-red-500">{errors.url.message}</p>}
             </Field>
@@ -207,150 +264,99 @@ export function HttpSettingsForm({ node, onSave, onCancel, flowContext }: NodeSe
             </Field>
             {/* 请求头 */}
             <Field>
-                <div className="flex items-center justify-between mb-2">
-                    <FieldLabel htmlFor="headers">请求头 (Headers)</FieldLabel>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => appendHeader({ key: '', value: '' })}>
-                        <PlusIcon size={14} className="mr-1" />
-                        添加
-                    </Button>
-                </div>
-                <div className="space-y-2">
-                    {headerFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-2 items-center">
-                            <Input placeholder="Header Name" className="flex-1 h-9" {...register(`headers.${index}.key` as const)} />
-                            <div className="flex-1">
-                                <KeyValueEditor
-                                    control={control}
-                                    name={`headers.${index}.value`}
-                                    availableOutputs={availableOutputs}
-                                    placeholder="Header value"
-                                />
-                            </div>
-                            <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeHeader(index)}>
-                                <TrashIcon size={14} />
-                            </Button>
-                        </div>
-                    ))}
-                    {headerFields.length === 0 && <p className="text-xs text-muted-foreground">点击上方添加按钮添加请求头</p>}
-                </div>
-                {/* Query 参数 */}
+                <FieldLabel htmlFor="headers">请求头 (Headers)</FieldLabel>
+                <KeyValueEditor
+                    fields={headerFields}
+                    control={control}
+                    namePrefix="headers"
+                    keyPlaceholder="Header Name"
+                    valuePlaceholder="Header Value"
+                    onAdd={() => appendHeader({ key: '', value: '' })}
+                    onRemove={removeHeader}
+                    availableOutputs={availableOutputs}
+                />
+            </Field>
+            {/* Query 参数 */}
+            <Field>
+                <FieldLabel>Query 参数 (Params)</FieldLabel>
+                <KeyValueEditor
+                    fields={paramFields}
+                    control={control}
+                    namePrefix="params"
+                    keyPlaceholder="params Name"
+                    valuePlaceholder="params Value"
+                    onAdd={() => appendParam({ key: '', value: '' })}
+                    onRemove={removeHeader}
+                    availableOutputs={availableOutputs}
+                />
+            </Field>
+            {/* 请求体 */}
+            {showBody && (
                 <Field>
-                    <div className="flex items-center justify-between mb-2">
-                        <FieldLabel>Query 参数 (Params)</FieldLabel>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => appendParam({ key: '', value: '' })}>
-                            <PlusIcon size={14} className="mr-1" />
-                            添加
-                        </Button>
-                    </div>
-                    <div className="space-y-2">
-                        {paramFields.map((field, index) => (
-                            <div key={field.id} className="flex gap-2 items-center">
-                                <Input placeholder="Param Name" className="flex-1 h-9" {...register(`params.${index}.key` as const)} />
-                                <div className="flex-1">
-                                    <KeyValueEditor
-                                        control={control}
-                                        name={`params.${index}.value`}
-                                        availableOutputs={availableOutputs}
-                                        placeholder="Param Value"
-                                    />
-                                </div>
-                                <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeParam(index)}>
-                                    <TrashIcon size={14} />
-                                </Button>
-                            </div>
-                        ))}
-                        {paramFields.length === 0 && <p className="text-xs text-muted-foreground">点击上方添加按钮添加 Query 参数</p>}
-                    </div>
-                </Field>
-                {/* 请求体 */}
-                {showBody && (
-                    <Field>
-                        <FieldLabel className="mb-3">请求体 (Body)</FieldLabel>
+                    <FieldLabel className="mb-3">请求体 (Body)</FieldLabel>
 
-                        {/* Body 类型 Radio Group - 使用controller*/}
-                        <Controller
-                            name="bodyType"
-                            control={control}
-                            render={({ field }) => (
-                                <RadioGroup
-                                    value={field.value}
-                                    onValueChange={(value: BodyType) => field.onChange(value)}
-                                    className="flex flex-wrap gap-4 mb-4"
-                                >
-                                    {bodyTypeOptions.map(option => (
-                                        <div key={option.value} className="flex items-center space-x-2">
-                                            <RadioGroupItem value={option.value} id={`body-type-${option.value}`} />
-                                            <Label htmlFor={`body-type-${option.value}`} className="text-sm font-normal cursor-pointer">
-                                                {option.label}
-                                            </Label>
-                                        </div>
-                                    ))}
-                                </RadioGroup>
-                            )}
-                        />
-
-                        {/* JSON 或 raw 模式：使用多行编辑器 - 使用 Controller */}
-                        {useTextEditor && (
-                            <Controller
-                                name="body"
-                                control={control}
-                                render={({ field }) => (
-                                    <VariableEditor
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        availableOutputs={availableOutputs}
-                                        placeholder={bodyType === 'json' ? '{"key": "value"}' : '请输入文本内容...'}
-                                        minHeight="120px"
-                                        className="font-mono text-xs"
-                                    />
-                                )}
-                            />
-                        )}
-
-                        {/* Form 模式：键值对形式 */}
-                        {useFormData && (
-                            <div className="space-y-2">
-                                <div className="flex justify-end">
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => appendFormData({ key: '', value: '' })}>
-                                        <PlusIcon size={14} className="mr-1" />
-                                        添加字段
-                                    </Button>
-                                </div>
-                                {formDataFields.map((field, index) => (
-                                    <div key={field.id} className="flex gap-2 items-center">
-                                        <Input
-                                            placeholder="Field Name"
-                                            className="flex-1 h-9"
-                                            {...register(`formData.${index}.key` as const)}
-                                        />
-                                        <div className="flex-1">
-                                            <KeyValueEditor
-                                                control={control}
-                                                name={`formData.${index}.value`}
-                                                availableOutputs={availableOutputs}
-                                                placeholder="Field Value"
-                                            />
-                                        </div>
-                                        <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeFormData(index)}>
-                                            <TrashIcon size={14} />
-                                        </Button>
+                    {/* Body 类型 Radio Group - 使用controller*/}
+                    <Controller
+                        name="bodyType"
+                        control={control}
+                        render={({ field }) => (
+                            <RadioGroup
+                                value={field.value}
+                                onValueChange={(value: BodyType) => field.onChange(value)}
+                                className="flex flex-wrap gap-x-4 gap-y-2 mb-4"
+                            >
+                                {bodyTypeOptions.map(option => (
+                                    <div key={option.value} className="flex items-center space-x-2">
+                                        <RadioGroupItem value={option.value} id={`body-type-${option.value}`} />
+                                        <Label htmlFor={`body-type-${option.value}`} className="text-sm font-normal cursor-pointer">
+                                            {option.label}
+                                        </Label>
                                     </div>
                                 ))}
-                                {formDataFields.length === 0 && (
-                                    <p className="text-xs text-muted-foreground">点击上方添加按钮添加表单字段</p>
-                                )}
-                            </div>
+                            </RadioGroup>
                         )}
+                    />
 
-                        {/* binary 模式：文件上传提示 */}
-                        {bodyType === 'binary' && (
-                            <div className="border border-dashed rounded-md p-4 text-center text-muted-foreground text-sm">
-                                Binary 模式暂不支持，请使用其他方式上传文件
-                            </div>
-                        )}
-                    </Field>
-                )}
-            </Field>
+                    {/* JSON 或 raw 模式：使用多行编辑器 - 使用 Controller */}
+                    {useTextEditor && (
+                        <Controller
+                            name="body"
+                            control={control}
+                            render={({ field }) => (
+                                <VariableEditor
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    availableOutputs={availableOutputs}
+                                    placeholder={bodyType === 'json' ? '{"key": "value"}' : '请输入文本内容...'}
+                                    minHeight="120px"
+                                    className="font-mono text-xs"
+                                />
+                            )}
+                        />
+                    )}
+
+                    {/* Form 模式：键值对形式 */}
+                    {useFormData && (
+                        <KeyValueEditor
+                            fields={formDataFields}
+                            control={control}
+                            namePrefix="formData"
+                            keyPlaceholder="formData Name"
+                            valuePlaceholder="formData Value"
+                            onAdd={() => appendFormData({ key: '', value: '' })}
+                            onRemove={removeHeader}
+                            availableOutputs={availableOutputs}
+                        />
+                    )}
+
+                    {/* binary 模式：文件上传提示 */}
+                    {bodyType === 'binary' && (
+                        <div className="border border-dashed rounded-md p-4 text-center text-muted-foreground text-sm">
+                            Binary 模式暂不支持，请使用其他方式上传文件
+                        </div>
+                    )}
+                </Field>
+            )}
         </form>
     )
 }

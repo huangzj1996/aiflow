@@ -52,10 +52,15 @@ model App {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
-  workflows   Workflow[]
+
+  // 关联工作流（一个应用可以有多个工作流版本）
+  workflows Workflow[]
+
+  // 关联执行历史
+  executions WorkflowExecution[]
 
   @@index([userId])
   @@index([type])
@@ -86,4 +91,44 @@ model Workflow {
   @@index([appId])
   @@index([version])
   @@map("workflows")
+}
+
+enum ExecutionStatus {
+  RUNNING
+  SUCCESS
+  ERROR
+}
+
+// 工作流执行历史记录
+model WorkflowExecution {
+  id          String @id @default(cuid())
+  executionId String @unique // 执行唯一标识
+
+  // 执行状态
+  status ExecutionStatus @default(RUNNING)
+
+  // 输入输出
+  inputs  Json? // 工作流输入参数
+  outputs Json? // 工作流输出结果
+  error   String? // 错误信息
+
+  // 执行统计
+  duration    Int? // 执行时长，单位毫秒
+  totalTokens Int  @default(0) // 总消耗 tokens 数
+
+  // 节点执行追踪
+  nodeTraces Json? // 节点执行详情，包括每个节点的输入输出、执行时长、消耗 tokens 数等
+
+  // 关联应用
+  appId String
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // 执行时间
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([appId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("workflow_executions")
 }

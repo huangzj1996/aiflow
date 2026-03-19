@@ -1,28 +1,23 @@
-import { ExecutionLogEntry, NodeKind } from '@aiflow-demo/ai-engine'
-import { Node } from '@xyflow/react'
+/*
+ *   Copyright (c) 2026 妙码学院 @Heyi
+ *   All rights reserved.
+ *   妙码学院官方出品，作者 @Heyi，供学员学习使用，可用作练习，可用作美化简历，不可开源。
+ */
+'use client'
+
+import type { ExecutionLogEntry, NodeKind } from '@aiflow-demo/ai-engine'
+import type { Edge, Node } from '@xyflow/react'
 import { AlertCircleIcon, CheckCircle2Icon, ChevronDownIcon, ClockIcon, Loader2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
+import { getColor, ICON_MAP } from '@/components/flow/icon-map'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { NodeTraceInfo, NodeTraceStatus } from '@/lib/types/test-run'
+import type { NodeTraceInfo, NodeTraceStatus } from '@/lib/types/test-run'
 import { cn } from '@/lib/utils'
 
 interface TraceTabProps {
     nodeTraces: Map<string, NodeTraceInfo>
     nodes: Node[]
-}
-
-/**
- * Node type labels
- */
-const NODE_TYPE_LABELS: Record<string, string> = {
-    start: '开始',
-    end: '结束',
-    llm: 'LLM',
-    http: 'HTTP',
-    condition: '条件',
-    code: '代码',
-    loop: '循环',
 }
 
 /**
@@ -40,29 +35,13 @@ function formatDuration(ms?: number): string {
 function StatusIcon({ status }: { status: NodeTraceStatus }) {
     switch (status) {
         case 'running':
-            return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+            return <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
         case 'success':
-            return <CheckCircle2Icon className="h-4 w-4 text-green-500" />
+            return <CheckCircle2Icon className="h-3 w-3 text-green-500" />
         case 'error':
-            return <AlertCircleIcon className="h-4 w-4 text-red-500" />
+            return <AlertCircleIcon className="h-3 w-3 text-red-500" />
         default:
-            return <ClockIcon className="h-4 w-4 text-gray-400" />
-    }
-}
-
-/**
- * Get status background color
- */
-function getStatusBg(status: NodeTraceStatus): string {
-    switch (status) {
-        case 'running':
-            return 'border-blue-200 bg-blue-50/50'
-        case 'success':
-            return 'border-green-200 bg-green-50/50'
-        case 'error':
-            return 'border-red-200 bg-red-50/50'
-        default:
-            return 'border-gray-200 bg-gray-50/50'
+            return <ClockIcon className="h-3 w-3 text-gray-400" />
     }
 }
 
@@ -80,74 +59,126 @@ function LogLevelBadge({ level }: { level: ExecutionLogEntry['level'] }) {
 }
 
 /**
+ * Node type icon component
+ */
+function NodeTypeIcon({ type }: { type: NodeKind }) {
+    const Icon = ICON_MAP[type] || ICON_MAP.llm
+    const colorClass = getColor(type) || 'bg-gray-700'
+
+    return (
+        <div className={cn('rounded p-1', colorClass)}>
+            <Icon className="h-3 w-3 text-white" />
+        </div>
+    )
+}
+
+/**
+ * Detail section component
+ */
+function DetailSection({ label, children, badge }: { label: string; children: React.ReactNode; badge?: React.ReactNode }) {
+    return (
+        <div className="overflow-hidden">
+            <div className="flex items-center gap-2 mb-1">
+                <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                {badge}
+            </div>
+            {children}
+        </div>
+    )
+}
+
+/**
  * Node Trace Item Component
  */
 function NodeTraceItem({ trace, nodeType }: { trace: NodeTraceInfo; nodeType: NodeKind }) {
     const [isOpen, setIsOpen] = useState(false)
 
-    const hasDetails = trace.outputs || trace.error || trace.logs.length > 0
+    const hasDetails =
+        (trace.inputs && Object.keys(trace.inputs).length > 0) ||
+        (trace.outputs && Object.keys(trace.outputs).length > 0) ||
+        trace.error ||
+        (trace.logs && trace.logs.length > 0)
 
     return (
-        <Collapsible>
-            <div className={cn('border rounded-lg transition-colors', getStatusBg(trace.status))}>
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+            <div className="border rounded-md overflow-hidden">
                 <CollapsibleTrigger asChild>
                     <button
-                        className="flex items-center justify-between w-full p-3 text-left hover:bg-black/5 transition-colors"
+                        className="flex items-center justify-between w-full px-2 py-1.5 text-left hover:bg-black/5 transition-colors"
                         disabled={!hasDetails}
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <NodeTypeIcon type={nodeType} />
                             <StatusIcon status={trace.status} />
-                            <div>
-                                <p className="text-sm font-medium">{trace.nodeName}</p>
-                                <p className="text-xs text-muted-foreground">{NODE_TYPE_LABELS[nodeType] || nodeType}</p>
-                            </div>
+                            <span className="text-sm font-medium truncate">{trace.nodeName}</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                             {trace.duration !== undefined && (
                                 <span className="text-xs text-muted-foreground">{formatDuration(trace.duration)}</span>
                             )}
                             {hasDetails && (
                                 <ChevronDownIcon
-                                    className={cn('h-4 w-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
+                                    className={cn('h-3 w-3 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
                                 />
                             )}
                         </div>
                     </button>
                 </CollapsibleTrigger>
+
                 {hasDetails && (
                     <CollapsibleContent>
-                        <div className="border-t p-3 space-y-3">
+                        <div className="border-t bg-muted/30 p-2 space-y-2">
                             {/* Error */}
                             {trace.error && (
-                                <div className="bg-red-50 border border-red-200 rounded p-2 overflow-hidden">
-                                    <p className="text-xs font-medium text-red-700 mb-1">错误信息</p>
-                                    <p className="text-xs font-mono text-red-600 break-all">{trace.error}</p>
-                                </div>
+                                <DetailSection label="错误">
+                                    <div className="bg-red-50 border border-red-200 rounded p-2 overflow-hidden">
+                                        <p className="text-xs font-mono text-red-600 break-all">{trace.error}</p>
+                                    </div>
+                                </DetailSection>
+                            )}
+
+                            {/* Inputs */}
+                            {trace.inputs && Object.keys(trace.inputs).length > 0 && (
+                                <DetailSection
+                                    label="输入"
+                                    badge={<span className="text-xs text-muted-foreground">({Object.keys(trace.inputs).length})</span>}
+                                >
+                                    <pre className="text-xs font-mono bg-white p-2 rounded border overflow-auto max-h-[150px] whitespace-pre-wrap break-all">
+                                        {JSON.stringify(trace.inputs, null, 2)}
+                                    </pre>
+                                </DetailSection>
                             )}
 
                             {/* Outputs */}
                             {trace.outputs && Object.keys(trace.outputs).length > 0 && (
-                                <div className="overflow-hidden">
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">输出</p>
-                                    <pre className="text-xs font-mono bg-muted/50 p-2 rounded overflow-auto max-h-[200px] whitespace-pre-wrap break-all">
+                                <DetailSection
+                                    label="输出"
+                                    badge={<span className="text-xs text-muted-foreground">({Object.keys(trace.outputs).length})</span>}
+                                >
+                                    <pre className="text-xs font-mono bg-white p-2 rounded border overflow-auto max-h-[150px] whitespace-pre-wrap break-all">
                                         {JSON.stringify(trace.outputs, null, 2)}
                                     </pre>
-                                </div>
+                                </DetailSection>
                             )}
 
                             {/* Logs */}
-                            {trace.logs.length > 0 && (
-                                <div className="overflow-hidden">
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">日志 ({trace.logs.length})</p>
-                                    <div className="space-y-1 max-h-[200px] overflow-auto">
+                            {trace.logs && trace.logs.length > 0 && (
+                                <DetailSection
+                                    label="日志"
+                                    badge={<span className="text-xs text-muted-foreground">({trace.logs.length})</span>}
+                                >
+                                    <div className="space-y-1 max-h-[120px] overflow-auto">
                                         {trace.logs.map((log, idx) => (
-                                            <div key={idx} className="text-xs font-mono bg-muted/30 p-1.5 rounded flex gap-2">
+                                            <div
+                                                key={idx}
+                                                className="text-xs font-mono bg-white p-1.5 rounded border flex gap-2 items-start"
+                                            >
                                                 <LogLevelBadge level={log.level} />
                                                 <span className="flex-1 break-all">{log.message}</span>
                                             </div>
                                         ))}
                                     </div>
-                                </div>
+                                </DetailSection>
                             )}
                         </div>
                     </CollapsibleContent>
@@ -157,18 +188,93 @@ function NodeTraceItem({ trace, nodeType }: { trace: NodeTraceInfo; nodeType: No
     )
 }
 
-export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
-    // Order traces based on node order in the workflow
-    const orderedTraces = useMemo(() => {
-        const traces: Array<{ trace: NodeTraceInfo; nodeType: NodeKind }> = []
+/**
+ * Compute topological order of nodes based on edges
+ * This gives us the execution order of the workflow
+ */
+function getExecutionOrder(nodes: Node[], edges: Edge[]): Node[] {
+    // Build adjacency list and in-degree count
+    const inDegree = new Map<string, number>()
+    const adjacency = new Map<string, string[]>()
+    const nodeSet = new Set(nodes.map(n => n.id))
 
-        // Create a map for quick node lookup
+    // Initialize all nodes with in-degree 0
+    for (const node of nodes) {
+        inDegree.set(node.id, 0)
+        adjacency.set(node.id, [])
+    }
+
+    // Build graph from edges
+    for (const edge of edges) {
+        if (nodeSet.has(edge.source) && nodeSet.has(edge.target)) {
+            const targets = adjacency.get(edge.source) || []
+            targets.push(edge.target)
+            adjacency.set(edge.source, targets)
+            inDegree.set(edge.target, (inDegree.get(edge.target) || 0) + 1)
+        }
+    }
+
+    // Kahn's algorithm for topological sort
+    const queue: string[] = []
+    const result: Node[] = []
+
+    // Start with nodes that have no incoming edges
+    for (const [nodeId, degree] of inDegree) {
+        if (degree === 0) {
+            queue.push(nodeId)
+        }
+    }
+
+    const nodeMap = new Map(nodes.map(n => [n.id, n]))
+
+    while (queue.length > 0) {
+        const nodeId = queue.shift()!
+        const node = nodeMap.get(nodeId)
+        if (node) {
+            result.push(node)
+        }
+
+        // Reduce in-degree for neighbors
+        const neighbors = adjacency.get(nodeId) || []
+        for (const neighbor of neighbors) {
+            const newDegree = (inDegree.get(neighbor) || 0) - 1
+            inDegree.set(neighbor, newDegree)
+            if (newDegree === 0) {
+                queue.push(neighbor)
+            }
+        }
+    }
+
+    return result
+}
+
+/**
+ * Trace Tab Component
+ * Displays real-time node execution traces in workflow execution order
+ */
+export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
+    // Order traces based on workflow execution order (topological sort)
+    const orderedTraces = useMemo(() => {
+        // Get execution order using topological sort
+        // We need to extract edges from the parent or pass them in
+        // For now, use the order of nodes in the workflow as a fallback
         const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
-        // Get traces in the order they appear in nodeTraces (which should be execution order)
-        for (const [nodeId, trace] of nodeTraces) {
-            const node = nodeMap.get(nodeId)
-            if (node) {
+        // Order by node position (top to bottom, left to right) as a visual approximation
+        const sortedNodes = [...nodes].sort((a, b) => {
+            // Primary sort by Y position (top to bottom)
+            if (a.position.y !== b.position.y) {
+                return a.position.y - b.position.y
+            }
+            // Secondary sort by X position (left to right)
+            return a.position.x - b.position.x
+        })
+
+        const traces: Array<{ trace: NodeTraceInfo; nodeType: NodeKind }> = []
+
+        for (const node of sortedNodes) {
+            const trace = nodeTraces.get(node.id)
+            if (trace) {
                 traces.push({
                     trace,
                     nodeType: node.type as NodeKind,
@@ -180,7 +286,7 @@ export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
     }, [nodeTraces, nodes])
 
     // Calculate summary stats
-    const status = useMemo(() => {
+    const stats = useMemo(() => {
         let pending = 0
         let running = 0
         let success = 0
@@ -200,10 +306,9 @@ export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
                 case 'error':
                     error++
                     break
-                default:
-                    break
             }
         }
+
         return { pending, running, success, error, total: orderedTraces.length }
     }, [orderedTraces])
 
@@ -216,40 +321,40 @@ export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
     }
 
     return (
-        <div className="space-y-4">
-            {' '}
+        <div className="space-y-3">
             {/* Summary */}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
                 <span>
-                    共 <strong className="text-foreground">{status.total}</strong> 个节点
+                    共 <strong className="text-foreground">{stats.total}</strong> 个节点
                 </span>
-                {status.success > 0 && (
+                {stats.success > 0 && (
                     <span className="flex items-center gap-1">
                         <CheckCircle2Icon className="h-3 w-3 text-green-500" />
-                        {status.success} 成功
+                        {stats.success}
                     </span>
                 )}
-                {status.running > 0 && (
+                {stats.running > 0 && (
                     <span className="flex items-center gap-1">
                         <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
-                        {status.running} 运行中
+                        {stats.running}
                     </span>
                 )}
-                {status.error > 0 && (
+                {stats.error > 0 && (
                     <span className="flex items-center gap-1">
                         <AlertCircleIcon className="h-3 w-3 text-red-500" />
-                        {status.error} 失败
+                        {stats.error}
                     </span>
                 )}
-                {status.pending > 0 && (
+                {stats.pending > 0 && (
                     <span className="flex items-center gap-1">
                         <ClockIcon className="h-3 w-3 text-gray-400" />
-                        {status.pending} 等待
+                        {stats.pending}
                     </span>
                 )}
             </div>
+
             {/* Node Traces */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
                 {orderedTraces.map(({ trace, nodeType }) => (
                     <NodeTraceItem key={trace.nodeId} trace={trace} nodeType={nodeType} />
                 ))}

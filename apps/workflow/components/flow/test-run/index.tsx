@@ -93,7 +93,7 @@ export function TestRunPanel({ open, onOpenChange, appId, nodes, edges }: TestRu
                         <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-lg p-2 shadow-sm">
                             <PlayIcon className="h-4 w-4" />
                         </div>
-                        <div>
+                        <div className="flex flex-col justify-center h-9">
                             <h3 className="text-sm font-medium">测试运行</h3>
                             {subtitle && (
                                 <p className="text-xs text-muted-foreground flex items-center gap-1">

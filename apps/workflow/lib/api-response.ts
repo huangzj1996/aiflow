@@ -60,7 +60,7 @@ export enum ErrorCode {
     UNKNOWN_ERROR = 'UNKNOWN_ERROR',
     VALIDATION_ERROR = 'VALIDATION_ERROR',
     INVALID_REQUEST = 'INVALID_REQUEST',
-
+    NOT_FOUND = 'NOT_FOUND',
     // 认证错误 (2xxx)
     UNAUTHORIZED = 'UNAUTHORIZED',
     TOKEN_INVALID = 'TOKEN_INVALID',
@@ -99,6 +99,7 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.UNKNOWN_ERROR]: 500,
     [ErrorCode.VALIDATION_ERROR]: 400,
     [ErrorCode.INVALID_REQUEST]: 400,
+    [ErrorCode.NOT_FOUND]: 404,
 
     [ErrorCode.UNAUTHORIZED]: 401,
     [ErrorCode.TOKEN_INVALID]: 401,
@@ -133,6 +134,7 @@ export const ErrorCodeMessageMap: Record<ErrorCode, string> = {
     [ErrorCode.UNKNOWN_ERROR]: '未知错误',
     [ErrorCode.VALIDATION_ERROR]: '输入数据验证失败',
     [ErrorCode.INVALID_REQUEST]: '无效的请求',
+    [ErrorCode.NOT_FOUND]: '请求的资源不存在',
 
     [ErrorCode.UNAUTHORIZED]: '未登录或登录已过期',
     [ErrorCode.TOKEN_INVALID]: '无效的认证令牌',

@@ -3,8 +3,10 @@
 import Placeholder from '@tiptap/extension-placeholder'
 import { EditorContent, JSONContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { XIcon } from 'lucide-react'
+import { ChevronDownIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+
+import { cn } from '@/lib/utils'
 
 import { getColor, ICON_MAP } from '../../icon-map'
 import { AvailableNodeOutput, formatVariableExpression, NodeOutputVariable } from '../node-outputs'
@@ -31,6 +33,8 @@ interface VariableEditorProps {
     singleLine?: boolean
     /** 单变量模式：只允许输入一个变量，不能输入文本 */
     singleVariable?: boolean
+    /** 隐藏边框（用于表格内嵌） */
+    hideBorder?: boolean
 }
 /**
  * 将纯文本（包含 ${nodeId.field} 变量）转换为 Tiptap JSON 内容
@@ -243,6 +247,7 @@ function SingleVariableSelector({
                 ) : (
                     <span className="text-muted-foreground">{placeholder || '选择变量'}</span>
                 )}
+                <ChevronDownIcon size={16} className="text-muted-foreground shrink-0" />
             </button>
             {open && (
                 <div
@@ -315,6 +320,7 @@ function RichTextEditor({
     disabled,
     className,
     singleLine,
+    hideBorder,
 }: Omit<VariableEditorProps, 'singleVariable'>) {
     const initialContent = useMemo(() => textToContent(value, availableOutputs), [value, availableOutputs])
     const editor = useEditor({
@@ -374,14 +380,17 @@ function RichTextEditor({
     // 单行模式样式
     const containerStyle = singleLine ? { height: '36px' } : { minHeight }
     const editorClassName = singleLine
-        ? 'h-full px-3 flex items-center text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:flex-1 [&_.ProseMirror]:whitespace-nowrap [&_.ProseMirror]:overflow-x-auto [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none'
+        ? 'h-full px-3 flex items-center text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:flex-1 [&_.ProseMirror]:whitespace-nowrap [&_.ProseMirror]:overflow-x-auto [&_.ProseMirror]:overflow-y-hidden [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none'
         : 'px-3 py-2 text-sm [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0 [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none'
 
     return (
         <>
-            <div className={`relative ${className || ''}`}>
+            <div className={cn('relative', className || '')}>
                 <div
-                    className="rounded-md border border-input bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2"
+                    className={cn(
+                        'bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 overflow-hidden',
+                        hideBorder ? 'border-0 rounded-none' : 'rounded-md border border-input'
+                    )}
                     style={containerStyle}
                 >
                     <EditorContent editor={editor} className={editorClassName} />
@@ -414,6 +423,7 @@ export function VariableEditor({
     className,
     singleLine = false,
     singleVariable = false,
+    hideBorder = false,
 }: VariableEditorProps) {
     if (singleVariable) {
         return (
@@ -438,6 +448,7 @@ export function VariableEditor({
                 disabled={disabled}
                 className={className}
                 singleLine={singleLine}
+                hideBorder={hideBorder}
             />
         </>
     )
