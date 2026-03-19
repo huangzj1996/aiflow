@@ -48,19 +48,26 @@ model App {
   isPublic    Boolean  @default(false)
   isDeleted   Boolean  @default(false)
 
+  // 发布相关字段
+  apiKey              String? @unique // API 访问密钥
+  publishedWorkflowId String? // 发布的工作流版本 ID
+
   // 关联用户
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  publishedAt DateTime?
 
   // 关联工作流（一个应用可以有多个工作流版本）
   workflows Workflow[]
 
   // 关联执行历史
   executions WorkflowExecution[]
+
+  // 关联发布的工作流版本
+  PublishedWorkflow Workflow? @relation("PublishedWorkflow", fields: [publishedWorkflowId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
 
   @@index([userId])
   @@index([type])
@@ -83,6 +90,9 @@ model Workflow {
   // 关联应用
   appId String
   app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // 反向关联（被 App.publishedWorkflow 引用）
+  appPublishes App[] @relation("PublishedWorkflow")
 
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

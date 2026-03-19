@@ -82,6 +82,10 @@ export enum ErrorCode {
     APP_DELETE_FAILED = 'APP_DELETE_FAILED',
     APP_UPDATE_FAILED = 'APP_UPDATE_FAILED',
 
+    // 工作流错误
+    INVALID_WORKFLOW = 'INVALID_WORKFLOW',
+    INVALID_OPERATION = 'INVALID_OPERATION',
+
     // 资源错误 (4xxx)
     RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
     RESOURCE_ALREADY_EXISTS = 'RESOURCE_ALREADY_EXISTS',
@@ -115,6 +119,8 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
 
     [ErrorCode.RESOURCE_NOT_FOUND]: 404,
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: 400,
+    [ErrorCode.INVALID_WORKFLOW]: 400,
+    [ErrorCode.INVALID_OPERATION]: 400,
 
     [ErrorCode.APP_NOT_FOUND]: 404,
     [ErrorCode.APP_ALREADY_EXISTS]: 400,
@@ -153,6 +159,8 @@ export const ErrorCodeMessageMap: Record<ErrorCode, string> = {
     [ErrorCode.APP_NAME_INVALID]: '应用名称无效',
     [ErrorCode.APP_DELETE_FAILED]: '应用删除失败',
     [ErrorCode.APP_UPDATE_FAILED]: '应用更新失败',
+    [ErrorCode.INVALID_WORKFLOW]: '工作流配置无效',
+    [ErrorCode.INVALID_OPERATION]: '操作无效',
 
     [ErrorCode.RESOURCE_NOT_FOUND]: '请求的资源不存在',
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: '资源已存在',

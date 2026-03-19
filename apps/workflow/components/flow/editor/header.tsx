@@ -1,13 +1,20 @@
 import { IconHistory } from '@tabler/icons-react'
-import { ArrowLeftIcon, ChevronDownIcon, History, Play, PlayCircle } from 'lucide-react'
-import { memo } from 'react'
+import { ArrowLeftIcon, CheckCircle2, ChevronDownIcon, Globe, History, Play, PlayCircle } from 'lucide-react'
+import { memo, useCallback, useEffect, useState } from 'react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 
 import { ExecutionHistoryDropdown } from '../execution-history'
+
+interface PublishStatus {
+    isPublic: boolean
+    publishedAt?: string | null
+}
 
 export type EditorMode = 'edit' | 'detail'
 
@@ -40,6 +47,102 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
     onExitTestRun,
     onSelectExecution,
 }: FlowEditorHeaderProps) {
+    const [publishStatus, setPublishStatus] = useState<PublishStatus>({ isPublic: false })
+    const [isPublishing, setIsPublishing] = useState(false)
+
+    // 获取发布状态
+    const fetchPublishStatus = useCallback(async () => {
+        if (!appId) return
+
+        try {
+            const response = await fetch(`/api/apps/${appId}/publish`)
+            if (response.ok) {
+                const result = await response.json()
+                if (result.success && result.data) {
+                    setPublishStatus({
+                        isPublic: result.data.isPublic || false,
+                        publishedAt: result.data.publishedAt,
+                    })
+                }
+            }
+        } catch {
+            // Ignore error
+        }
+    }, [appId])
+
+    useEffect(() => {
+        fetchPublishStatus()
+    }, [fetchPublishStatus])
+
+    // 发布应用
+    const handlePublish = async () => {
+        if (!appId) return
+
+        setIsPublishing(true)
+        try {
+            const response = await fetch(`/api/apps/${appId}/publish`, {
+                method: 'POST',
+            })
+
+            if (!response.ok) {
+                const error = await response.json()
+                toast.error(error.message || '发布失败')
+                return
+            }
+
+            const result = await response.json()
+            setPublishStatus({
+                isPublic: true,
+                publishedAt: new Date().toISOString(),
+            })
+            toast.success(result.data.message || '应用发布成功！')
+        } catch (error) {
+            toast.error('发布失败，请重试')
+        } finally {
+            setIsPublishing(false)
+        }
+    }
+
+    // 取消发布
+    const handleUnpublish = async () => {
+        if (!appId) return
+
+        setIsPublishing(true)
+        try {
+            const response = await fetch(`/api/apps/${appId}/unpublish`, {
+                method: 'POST',
+            })
+
+            if (!response.ok) {
+                const error = await response.json()
+                toast.error(error.message || '取消发布失败')
+                return
+            }
+
+            setPublishStatus({ isPublic: false })
+            toast.success('已取消发布')
+        } catch (error) {
+            toast.error('取消发布失败，请重试')
+        } finally {
+            setIsPublishing(false)
+        }
+    }
+
+    // 格式化发布时间
+    const formatPublishTime = (dateStr: string) => {
+        const date = new Date(dateStr)
+        const now = new Date()
+        const diffMs = now.getTime() - date.getTime()
+        const diffMins = Math.floor(diffMs / 60000)
+        const diffHours = Math.floor(diffMs / 3600000)
+        const diffDays = Math.floor(diffMs / 86400000)
+
+        if (diffMins < 1) return '刚刚'
+        if (diffMins < 60) return `${diffMins} 分钟前`
+        if (diffHours < 24) return `${diffHours} 小时前`
+        return `${diffDays} 天前`
+    }
+
     // Detail Mode Header (viewing execution history)
     if (mode === 'detail') {
         return (
@@ -93,25 +196,87 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
 
                 <Popover>
                     <PopoverTrigger asChild>
-                        <Button variant="default" size="sm" aria-label="Open Popover">
-                            发布
-                            <ChevronDownIcon />
+                        <Button
+                            variant={publishStatus.isPublic ? 'secondary' : 'default'}
+                            size="sm"
+                            aria-label="Open Popover"
+                            className={cn(publishStatus.isPublic && 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200')}
+                        >
+                            {publishStatus.isPublic ? (
+                                <>
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    已发布
+                                </>
+                            ) : (
+                                <>
+                                    <Globe className="h-4 w-4 mr-1" />
+                                    发布
+                                </>
+                            )}
+                            <ChevronDownIcon className="h-4 w-4 ml-1" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" sideOffset={6} className="rounded-xl p-0 text-sm bg-white w-60">
-                        <div className="p-4 text-sm *:[p:not(:last-child)]:mb-2">
-                            <p className="font-medium">最新发布</p>
-                            <p className="text-muted-foreground">发布于 4 个月前</p>
-                            <Button variant="default" size="sm" className="w-full">
-                                发布更新
-                            </Button>
-                        </div>
-                        <Separator />
-                        <div className="p-4 text-sm *:[p:not(:last-child)]:mb-2">
-                            <Button variant="secondary" size="sm" className="w-full justify-start">
-                                <PlayCircle size={12} /> 运行
-                            </Button>
-                        </div>
+                    <PopoverContent align="end" sideOffset={6} className="rounded-xl p-0 text-sm bg-white w-56">
+                        {publishStatus.isPublic ? (
+                            <>
+                                {/* 已发布状态 */}
+                                <div className="p-4 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                        <span className="font-medium">已发布</span>
+                                        {publishStatus.publishedAt && (
+                                            <span className="text-xs text-muted-foreground">
+                                                · {formatPublishTime(publishStatus.publishedAt)}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <Separator />
+                                <div className="p-3 space-y-2">
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="w-full"
+                                        onClick={handlePublish}
+                                        disabled={isPublishing || hasUnsavedChanges}
+                                    >
+                                        {isPublishing ? '更新中...' : hasUnsavedChanges ? '请先保存后更新' : '更新发布'}
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        onClick={handleUnpublish}
+                                        disabled={isPublishing}
+                                    >
+                                        {isPublishing ? '处理中...' : '取消发布'}
+                                    </Button>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                {/* 未发布状态 */}
+                                <div className="p-4 space-y-3">
+                                    <div className="flex items-center gap-2">
+                                        <Globe className="h-4 w-4 text-muted-foreground" />
+                                        <span className="font-medium">发布应用</span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">发布后可通过 API 调用此工作流</p>
+                                </div>
+                                <Separator />
+                                <div className="p-3">
+                                    <Button
+                                        variant="default"
+                                        size="sm"
+                                        className="w-full"
+                                        onClick={handlePublish}
+                                        disabled={isPublishing || hasUnsavedChanges}
+                                    >
+                                        {isPublishing ? '发布中...' : hasUnsavedChanges ? '请先保存' : '立即发布'}
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </PopoverContent>
                 </Popover>
 
