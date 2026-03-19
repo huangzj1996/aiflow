@@ -1,7 +1,7 @@
 'use client'
 
 import { NodeKind } from '@aiflow-demo/ai-engine'
-import { Node } from '@xyflow/react'
+import { Edge, Node } from '@xyflow/react'
 import { HistoryIcon, Loader2, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -49,6 +49,7 @@ interface ExecutionDetailPanelProps {
     appId: string
     executionId: string | null
     nodes: Node[]
+    edges: Edge[]
 }
 
 /**
@@ -123,7 +124,7 @@ function convertToTestRunState(detail: ExecutionDetail | null, nodes: Node[]): T
     }
 }
 
-export function ExecutionDetailPanel({ open, onOpenChange, appId, executionId, nodes }: ExecutionDetailPanelProps) {
+export function ExecutionDetailPanel({ open, onOpenChange, appId, executionId, nodes, edges }: ExecutionDetailPanelProps) {
     const [detail, setDetail] = useState<ExecutionDetail | null>(null)
     const [isLoading, setIsLoading] = useState(false)
 
@@ -211,7 +212,7 @@ export function ExecutionDetailPanel({ open, onOpenChange, appId, executionId, n
                                 </TabsContent>
 
                                 <TabsContent value="trace" className="px-4 py-4 mt-0">
-                                    <TraceTab nodeTraces={testRunState.nodeTraces} nodes={nodes} />
+                                    <TraceTab nodeTraces={testRunState.nodeTraces} nodes={nodes} edges={edges} />
                                 </TabsContent>
                             </ScrollArea>
                         </Tabs>

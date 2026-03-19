@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 interface TraceTabProps {
     nodeTraces: Map<string, NodeTraceInfo>
     nodes: Node[]
+    edges: Edge[]
 }
 
 /**
@@ -101,7 +102,7 @@ function NodeTraceItem({ trace, nodeType }: { trace: NodeTraceInfo; nodeType: No
 
     return (
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-            <div className="border rounded-md overflow-hidden">
+            <div className="border rounded-md overflow-hidden shadow-md">
                 <CollapsibleTrigger asChild>
                     <button
                         className="flex items-center justify-between w-full px-2 py-1.5 text-left hover:bg-black/5 transition-colors"
@@ -109,13 +110,13 @@ function NodeTraceItem({ trace, nodeType }: { trace: NodeTraceInfo; nodeType: No
                     >
                         <div className="flex items-center gap-2 min-w-0 flex-1">
                             <NodeTypeIcon type={nodeType} />
-                            <StatusIcon status={trace.status} />
                             <span className="text-sm font-medium truncate">{trace.nodeName}</span>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                             {trace.duration !== undefined && (
                                 <span className="text-xs text-muted-foreground">{formatDuration(trace.duration)}</span>
                             )}
+                            <StatusIcon status={trace.status} />
                             {hasDetails && (
                                 <ChevronDownIcon
                                     className={cn('h-3 w-3 text-muted-foreground transition-transform', isOpen && 'rotate-180')}
@@ -127,7 +128,7 @@ function NodeTraceItem({ trace, nodeType }: { trace: NodeTraceInfo; nodeType: No
 
                 {hasDetails && (
                     <CollapsibleContent>
-                        <div className="border-t bg-muted/30 p-2 space-y-2">
+                        <div className="bg-muted/30 p-2 space-y-2">
                             {/* Error */}
                             {trace.error && (
                                 <DetailSection label="错误">
@@ -252,23 +253,11 @@ function getExecutionOrder(nodes: Node[], edges: Edge[]): Node[] {
  * Trace Tab Component
  * Displays real-time node execution traces in workflow execution order
  */
-export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
+export function TraceTab({ nodeTraces, nodes, edges }: TraceTabProps) {
     // Order traces based on workflow execution order (topological sort)
     const orderedTraces = useMemo(() => {
-        // Get execution order using topological sort
-        // We need to extract edges from the parent or pass them in
-        // For now, use the order of nodes in the workflow as a fallback
-        const nodeMap = new Map(nodes.map(n => [n.id, n]))
-
         // Order by node position (top to bottom, left to right) as a visual approximation
-        const sortedNodes = [...nodes].sort((a, b) => {
-            // Primary sort by Y position (top to bottom)
-            if (a.position.y !== b.position.y) {
-                return a.position.y - b.position.y
-            }
-            // Secondary sort by X position (left to right)
-            return a.position.x - b.position.x
-        })
+        const sortedNodes = getExecutionOrder(nodes, edges)
 
         const traces: Array<{ trace: NodeTraceInfo; nodeType: NodeKind }> = []
 
@@ -283,7 +272,7 @@ export function TraceTab({ nodeTraces, nodes }: TraceTabProps) {
         }
 
         return traces
-    }, [nodeTraces, nodes])
+    }, [nodeTraces, nodes, edges])
 
     // Calculate summary stats
     const stats = useMemo(() => {

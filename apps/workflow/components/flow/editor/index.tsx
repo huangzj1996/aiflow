@@ -435,6 +435,7 @@ const EditorInner = ({ appId, appName, initialNodes = [], initialEdges = [] }: F
                         appId={appId}
                         executionId={selectedExecutionId}
                         nodes={nodes}
+                        edges={edges}
                     />
                 )}
 

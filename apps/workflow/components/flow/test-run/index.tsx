@@ -139,7 +139,7 @@ export function TestRunPanel({ open, onOpenChange, appId, nodes, edges }: TestRu
                                 <DetailsTab state={state} />
                             </TabsContent>
                             <TabsContent value="trace" className="px-4 py-4 mt-0">
-                                <TraceTab nodeTraces={state.nodeTraces} nodes={nodes} />
+                                <TraceTab nodeTraces={state.nodeTraces} nodes={nodes} edges={edges} />
                             </TabsContent>
                         </ScrollArea>
                     </div>
