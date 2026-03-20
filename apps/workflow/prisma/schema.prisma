@@ -45,7 +45,7 @@ model App {
   tags        String[] @default([])
   config      Json?
   version     Int      @default(1)
-  isPublic    Boolean  @default(false)
+  isPublished    Boolean  @default(false)
   isDeleted   Boolean  @default(false)
 
   // 发布相关字段

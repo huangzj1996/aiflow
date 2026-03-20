@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 import { ExecutionHistoryDropdown } from '../execution-history'
 
 interface PublishStatus {
-    isPublic: boolean
+    isPublished: boolean
     publishedAt?: string | null
 }
 
@@ -47,7 +47,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
     onExitTestRun,
     onSelectExecution,
 }: FlowEditorHeaderProps) {
-    const [publishStatus, setPublishStatus] = useState<PublishStatus>({ isPublic: false })
+    const [publishStatus, setPublishStatus] = useState<PublishStatus>({ isPublished: false })
     const [isPublishing, setIsPublishing] = useState(false)
 
     // 获取发布状态
@@ -60,7 +60,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                 const result = await response.json()
                 if (result.success && result.data) {
                     setPublishStatus({
-                        isPublic: result.data.isPublic || false,
+                        isPublished: result.data.isPublished || false,
                         publishedAt: result.data.publishedAt,
                     })
                 }
@@ -92,7 +92,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
 
             const result = await response.json()
             setPublishStatus({
-                isPublic: true,
+                isPublished: true,
                 publishedAt: new Date().toISOString(),
             })
             toast.success(result.data.message || '应用发布成功！')
@@ -119,7 +119,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                 return
             }
 
-            setPublishStatus({ isPublic: false })
+            setPublishStatus({ isPublished: false })
             toast.success('已取消发布')
         } catch (error) {
             toast.error('取消发布失败，请重试')
@@ -197,12 +197,12 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
-                            variant={publishStatus.isPublic ? 'secondary' : 'default'}
+                            variant={publishStatus.isPublished ? 'secondary' : 'default'}
                             size="sm"
                             aria-label="Open Popover"
-                            className={cn(publishStatus.isPublic && 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200')}
+                            className={cn(publishStatus.isPublished && 'bg-green-50 text-green-700 hover:bg-green-100 border-green-200')}
                         >
-                            {publishStatus.isPublic ? (
+                            {publishStatus.isPublished ? (
                                 <>
                                     <CheckCircle2 className="h-4 w-4 mr-1" />
                                     已发布
@@ -217,7 +217,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                         </Button>
                     </PopoverTrigger>
                     <PopoverContent align="end" sideOffset={6} className="rounded-xl p-0 text-sm bg-white w-56">
-                        {publishStatus.isPublic ? (
+                        {publishStatus.isPublished ? (
                             <>
                                 {/* 已发布状态 */}
                                 <div className="p-4 space-y-3">

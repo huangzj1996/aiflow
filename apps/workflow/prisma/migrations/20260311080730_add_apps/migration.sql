@@ -11,7 +11,7 @@ CREATE TABLE "apps" (
     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "config" JSONB,
     "version" INTEGER NOT NULL DEFAULT 1,
-    "isPublic" BOOLEAN NOT NULL DEFAULT false,
+    "isPublished" BOOLEAN NOT NULL DEFAULT false,
     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "userId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,

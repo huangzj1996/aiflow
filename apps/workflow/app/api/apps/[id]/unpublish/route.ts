@@ -28,7 +28,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             },
             select: {
                 id: true,
-                isPublic: true,
+                isPublished: true,
             },
         })
 
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return apiError(ErrorCode.APP_NOT_FOUND, '应用不存在')
         }
 
-        if (!app.isPublic) {
+        if (!app.isPublished) {
             return apiError(ErrorCode.APP_NOT_FOUND, '应用未发布')
         }
 
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
                 id: appId,
             },
             data: {
-                isPublic: false,
+                isPublished: false,
                 apiKey: null,
                 publishedAt: null,
                 publishedWorkflowId: null,

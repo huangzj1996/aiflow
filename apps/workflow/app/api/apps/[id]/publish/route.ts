@@ -25,7 +25,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
             },
             select: {
                 id: true,
-                isPublic: true,
+                isPublished: true,
                 publishedAt: true,
                 publishedWorkflowId: true,
             },
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             select: {
                 id: true,
                 name: true,
-                isPublic: true,
+                isPublished: true,
                 publishedWorkflowId: true,
             },
         })
@@ -107,14 +107,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         // 4. 检查是否是更新发布
-        const isUpdate = app.isPublic
+        const isUpdate = app.isPublished
 
         await prisma.app.update({
             where: {
                 id: app.id,
             },
             data: {
-                isPublic: true,
+                isPublished: true,
                 publishedWorkflowId: workflow.id,
                 publishedAt: new Date(),
             },

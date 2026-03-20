@@ -1,3 +1,5 @@
+'use client'
+
 import { BookOpenIcon, CheckCircleIcon, CopyIcon } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -15,9 +17,9 @@ interface ApiDocumentationProps {
 export function ApiDocumentation({ appId, appName }: ApiDocumentationProps) {
     const [copiedSection, setCopiedSection] = useState<string | null>(null)
 
-    // API 基础信息
-    const apiBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1'
-    const workflowEndpoint = `${apiBaseUrl}/apps/${appId}/run`
+    // API 基础信息 - api-server 运行在 3100 端口
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_SERVER_URL || 'http://localhost:3100'
+    const workflowEndpoint = `${apiBaseUrl}/api/v1/apps/run`
 
     // 复制代码
     const handleCopy = async (code: string, section: string) => {

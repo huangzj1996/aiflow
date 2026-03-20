@@ -24,3 +24,5 @@ toolbelt
 sqlcommenter
 uuidv
 cuid
+xiaoer
+qdrant
