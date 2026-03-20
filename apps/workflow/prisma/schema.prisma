@@ -49,8 +49,10 @@ model App {
   isDeleted   Boolean  @default(false)
 
   // 发布相关字段
-  apiKey              String? @unique // API 访问密钥
   publishedWorkflowId String? // 发布的工作流版本 ID
+
+  // 关联 API Keys（一个应用可以有多个 API Key）
+  apiKeys ApiKey[]
 
   // 关联用户
   userId String
@@ -141,4 +143,31 @@ model WorkflowExecution {
   @@index([status])
   @@index([startedAt])
   @@map("workflow_executions")
+}
+
+// API 访问密钥
+model ApiKey {
+  id        String @id @default(cuid())
+  name      String // Key 名称（便于识别）
+  key       String @unique // 实际的 API Key 值
+  keyPrefix String // Key 前缀（用于显示 sk-xxx...xxx）
+
+  // 状态和权限
+  isActive  Boolean   @default(true) // 是否启用
+  expiresAt DateTime? // 过期时间（null 表示永不过期）
+
+  // 使用统计
+  lastUsedAt DateTime? // 最后使用时间
+  usageCount Int       @default(0) // 使用次数
+
+  appId String
+  app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  // 时间戳
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([appId])
+  @@index([key])
+  @@map("api_keys")
 }

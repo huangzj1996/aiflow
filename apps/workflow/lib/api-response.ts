@@ -86,6 +86,13 @@ export enum ErrorCode {
     INVALID_WORKFLOW = 'INVALID_WORKFLOW',
     INVALID_OPERATION = 'INVALID_OPERATION',
 
+    // API Key 错误
+    API_KEY_NOT_FOUND = 'API_KEY_NOT_FOUND',
+    API_KEY_INVALID = 'API_KEY_INVALID',
+    API_KEY_EXPIRED = 'API_KEY_EXPIRED',
+    API_KEY_DISABLED = 'API_KEY_DISABLED',
+    API_KEY_LIMIT_EXCEEDED = 'API_KEY_LIMIT_EXCEEDED',
+
     // 资源错误 (4xxx)
     RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
     RESOURCE_ALREADY_EXISTS = 'RESOURCE_ALREADY_EXISTS',
@@ -121,6 +128,12 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: 400,
     [ErrorCode.INVALID_WORKFLOW]: 400,
     [ErrorCode.INVALID_OPERATION]: 400,
+
+    [ErrorCode.API_KEY_NOT_FOUND]: 404,
+    [ErrorCode.API_KEY_INVALID]: 401,
+    [ErrorCode.API_KEY_EXPIRED]: 401,
+    [ErrorCode.API_KEY_DISABLED]: 403,
+    [ErrorCode.API_KEY_LIMIT_EXCEEDED]: 429,
 
     [ErrorCode.APP_NOT_FOUND]: 404,
     [ErrorCode.APP_ALREADY_EXISTS]: 400,
@@ -161,6 +174,12 @@ export const ErrorCodeMessageMap: Record<ErrorCode, string> = {
     [ErrorCode.APP_UPDATE_FAILED]: '应用更新失败',
     [ErrorCode.INVALID_WORKFLOW]: '工作流配置无效',
     [ErrorCode.INVALID_OPERATION]: '操作无效',
+
+    [ErrorCode.API_KEY_NOT_FOUND]: 'API Key 不存在',
+    [ErrorCode.API_KEY_INVALID]: '无效的 API Key',
+    [ErrorCode.API_KEY_EXPIRED]: 'API Key 已过期',
+    [ErrorCode.API_KEY_DISABLED]: 'API Key 已禁用',
+    [ErrorCode.API_KEY_LIMIT_EXCEEDED]: 'API Key 调用次数超限',
 
     [ErrorCode.RESOURCE_NOT_FOUND]: '请求的资源不存在',
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: '资源已存在',
