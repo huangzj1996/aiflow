@@ -55,6 +55,7 @@ export interface ValidationResult {
 export interface WorkflowResult {
     success: boolean
     error?: Error
+    /** 工作流最终的输出结果 */
     outputs: Record<string, unknown>
     executionId: string
     duration: number

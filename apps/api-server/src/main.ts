@@ -2,6 +2,8 @@ import { Logger, ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 
 import { AppModule } from './app.module.js'
+import { GlobalExceptionFilter } from './common/http-exception.filter.js'
+import { TransformInterceptor } from './common/transform.interceptor.js'
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule)
@@ -25,6 +27,12 @@ async function bootstrap() {
             },
         })
     )
+
+    // 全局异常
+    app.useGlobalFilters(new GlobalExceptionFilter())
+
+    // 全局拦截
+    app.useGlobalInterceptors(new TransformInterceptor())
 
     const port = process.env.PORT ?? 3100
     await app.listen(port)
