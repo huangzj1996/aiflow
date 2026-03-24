@@ -1,8 +1,25 @@
+import { createWorkflowEngine, type ExecutionLogEntry, type WorkflowDefinition } from '@aiflow-demo/ai-engine'
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { randomUUID } from 'crypto'
 
-import { PrismaService } from '../../prisma/prisma.service.js'
-import { RunWorkflowDto, WorkflowExecutionResultDto } from './dto/run-workflow.dto'
+import { PrismaService } from '../../prisma/prisma.service'
+import type { RunWorkflowDto, WorkflowExecutionResultDto } from './dto/run-workflow.dto'
+
+// SSE 事件类型
+export interface SSEEvent {
+    type: 'node:start' | 'node:end' | 'log' | 'complete' | 'error'
+    data: unknown
+}
+
+// SSE 回调函数类型
+export type SSECallback = (event: SSEEvent) => void
+
+// 执行上下文
+export interface ExecutionContext {
+    appId: string
+    activePublishedId: string | null
+    apiKeyId: string
+}
 
 @Injectable()
 export class WorkflowService {
@@ -10,28 +27,28 @@ export class WorkflowService {
     constructor(private readonly prisma: PrismaService) {}
     /*************  ✨ Windsurf Command ⭐  *************/
     /**
-     * 执行工作流
-     * @param appId 应用 ID
-     * @param publishedWorkflowId 发布的工作流 ID
-     * @param body 工作流执行参数
-     * @returns 工作流执行结果
-     * @throws {BadRequestException} 如果应用未配置工作流
-     * @throws {NotFoundException} 如果工作流不存在
+     * 执行工作流 （同步模式）
+     * 使用 PublishedApp 获取工作流定义，执行记录存入 AppExecution
      */
-    async runWorkflow(appId: string, publishedWorkflowId: string | null, body: RunWorkflowDto): Promise<WorkflowExecutionResultDto> {
-        // 获取发布的工作流
-        if (!publishedWorkflowId) {
-            throw new BadRequestException({ code: 'WORKFLOW_NOT_FOUND', message: '应用未配置工作流' })
+    async runWorkflow(context: ExecutionContext, body: RunWorkflowDto): Promise<WorkflowExecutionResultDto> {
+        const { appId, activePublishedId, apiKeyId } = context
+        // 检查是否有激活的发布版本
+        if (!activePublishedId) {
+            throw new BadRequestException({
+                code: 'APP_NOT_PUBLISHED',
+                message: '应用未发布，请先发布应用',
+            })
         }
 
-        const workflow = await this.prisma.workflow.findUnique({
-            where: { id: publishedWorkflowId },
+        // 获取发布的应用版本
+        const publishedApp = await this.prisma.publishedApp.findUnique({
+            where: { id: activePublishedId },
         })
 
-        if (!workflow) {
+        if (!publishedApp) {
             throw new NotFoundException({
-                code: 'WORKFLOW_NOT_FOUND',
-                message: '工作流不存在',
+                code: 'PUBLISHED_APP_NOT_FOUND',
+                message: '发布版本不存在',
             })
         }
 
@@ -39,42 +56,59 @@ export class WorkflowService {
         const executionId = `exec_${randomUUID().replace(/-/g, '').slice(0, 16)}`
         const startTime = Date.now()
 
-        // 创建执行记录
-        const execution = await this.prisma.workflowExecution.create({
+        // 创建执行记录（使用 AppExecution）
+        const execution = await this.prisma.appExecution.create({
             data: {
                 executionId,
-                appId,
+                publishedAppId: activePublishedId,
+                apiKeyId,
                 status: 'RUNNING',
                 inputs: body.inputs as object,
             },
         })
 
         try {
-            // TODO: 这里需要接入 ai-engine 包执行工作流
-            // 目前返回模拟结果
-            this.logger.log(`start workflow execution: ${executionId} `)
-            // 模拟工作流执行
-            const result = await this.executeWorkflowNodes(workflow.nodes as unknown[], body.inputs)
+            this.logger.log(`Starting app execution: ${executionId} (published: ${publishedApp.name} v${publishedApp.version})`)
+
+            // 创建工作流引擎
+            const engine = createWorkflowEngine({
+                ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+                verbose: process.env.NODE_ENV === 'development',
+            })
+
+            // 构建工作流定义
+            const workflowDefinition: WorkflowDefinition = {
+                id: publishedApp.id,
+                name: publishedApp.name,
+                nodes: publishedApp.nodes as unknown as WorkflowDefinition['nodes'],
+                edges: publishedApp.edges as unknown as WorkflowDefinition['edges'],
+            }
+
+            // 执行工作流
+            const result = await engine.execute(workflowDefinition, body.inputs)
 
             const duration = Date.now() - startTime
 
             // 更新执行记录
-            await this.prisma.workflowExecution.update({
+            await this.prisma.appExecution.update({
                 where: {
                     id: execution.id,
                 },
                 data: {
+                    status: result.success ? 'SUCCESS' : 'ERROR',
+                    outputs: result.outputs as object,
+                    error: result.error?.message,
                     duration,
-                    outputs: result as object,
-                    status: 'SUCCESS',
+                    nodeTraces: result.logs as object,
                     completedAt: new Date(),
                 },
             })
 
             return {
                 executionId,
-                status: 'SUCCESS',
-                outputs: result,
+                status: result.success ? 'SUCCESS' : 'ERROR',
+                outputs: result.outputs,
+                error: result.error?.message,
                 duration,
                 totalTokens: 0,
             }
@@ -82,7 +116,7 @@ export class WorkflowService {
             const duration = Date.now() - startTime
             const errorMessage = error instanceof Error ? error.message : '执行失败'
 
-            await this.prisma.workflowExecution.update({
+            await this.prisma.appExecution.update({
                 where: {
                     id: execution.id,
                 },
@@ -94,6 +128,8 @@ export class WorkflowService {
                 },
             })
 
+            this.logger.error(`App execution failed: ${executionId}`, error)
+
             return {
                 executionId,
                 status: 'ERROR',
@@ -103,15 +139,145 @@ export class WorkflowService {
         }
     }
     /**
-     * 执行工作流节点（临时实现，后续接入 ai-engine）
+     * 执行工作流（流式模式，支持 SSE）
+     * 使用 PublishedApp 获取工作流定义，执行记录存入 AppExecution
      */
-    private async executeWorkflowNodes(nodes: unknown[], inputs: Record<string, unknown>): Promise<Record<string, unknown>> {
-        // TODO: 接入 @miaoma-aiflow/ai-engine 执行实际工作流
-        // 目前返回简单的回显结果
-        return {
-            result: `Workflow executed with inputs: ${JSON.stringify(inputs)}`,
-            timestamp: new Date().toISOString(),
-            nodeCount: Array.isArray(nodes) ? nodes.length : 0,
+    async runWorkflowStream(context: ExecutionContext, dto: RunWorkflowDto, onEvent: SSECallback): Promise<void> {
+        const { appId, activePublishedId, apiKeyId } = context
+
+        // 检查是否有激活的发布版本
+        if (!activePublishedId) {
+            onEvent({
+                type: 'error',
+                data: { code: 'APP_NOT_PUBLISHED', message: '应用未发布，请先发布应用' },
+            })
+            return
+        }
+
+        const publishedApp = await this.prisma.publishedApp.findUnique({
+            where: { id: activePublishedId },
+        })
+
+        if (!publishedApp) {
+            onEvent({
+                type: 'error',
+                data: { code: 'PUBLISHED_APP_NOT_FOUND', message: '发布版本不存在' },
+            })
+            return
+        }
+
+        // 生成执行 ID
+        const executionId = `exec_${randomUUID().replace(/-/g, '').slice(0, 16)}`
+        const startTime = Date.now()
+
+        // 创建执行记录（使用 AppExecution）
+        const execution = await this.prisma.appExecution.create({
+            data: {
+                executionId,
+                apiKeyId,
+                publishedAppId: activePublishedId,
+                inputs: dto.inputs as object,
+                status: 'RUNNING',
+            },
+        })
+
+        try {
+            this.logger.log(`Starting app stream execution: ${executionId} (published: ${publishedApp.name} v${publishedApp.version})`)
+
+            // 创建工作流引擎
+            const engine = createWorkflowEngine({
+                ollamaBaseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+                verbose: true,
+            })
+
+            // 构建工作流定义
+            const workflowDefinition: WorkflowDefinition = {
+                id: publishedApp.id,
+                name: publishedApp.name,
+                nodes: publishedApp.nodes as unknown as WorkflowDefinition['nodes'],
+                edges: publishedApp.edges as unknown as WorkflowDefinition['edges'],
+            }
+
+            // 执行工作流（带实时回调）
+            const result = await engine.execute(workflowDefinition, dto.inputs, {
+                onNodeStart(nodeId, nodeType, nodeName) {
+                    onEvent({
+                        type: 'node:start',
+                        data: { nodeId, nodeType, nodeName, executionId },
+                    })
+                },
+                onNodeEnd(nodeId, result) {
+                    onEvent({
+                        type: 'node:end',
+                        data: { nodeId, success: result.success, outputs: result.outputs, duration: result.duration, executionId },
+                    })
+                },
+                onLog(entry: ExecutionLogEntry) {
+                    onEvent({
+                        type: 'log',
+                        data: {
+                            timestamp: entry.timestamp,
+                            level: entry.level,
+                            phase: entry.phase,
+                            message: entry.message,
+                            nodeId: entry.nodeId,
+                            executionId,
+                        },
+                    })
+                },
+            })
+
+            const duration = Date.now() - startTime
+
+            await this.prisma.appExecution.update({
+                where: { id: execution.id },
+                data: {
+                    status: result.success ? 'SUCCESS' : 'ERROR',
+                    error: result.error?.message,
+                    outputs: result.outputs as object,
+                    duration,
+                    nodeTraces: result.logs as object,
+                    completedAt: new Date(),
+                },
+            })
+
+            onEvent({
+                type: 'complete',
+                data: {
+                    executionId,
+                    status: result.success ? 'SUCCESS' : 'ERROR',
+                    outputs: result.outputs,
+                    error: result.error?.message,
+                    duration,
+                },
+            })
+        } catch (error) {
+            const duration = Date.now() - startTime
+            const errorMessage = error instanceof Error ? error.message : '执行失败'
+
+            // 更新执行记录
+            await this.prisma.appExecution.update({
+                where: { id: execution.id },
+                data: {
+                    status: 'ERROR',
+                    error: errorMessage,
+                    duration,
+                    completedAt: new Date(),
+                },
+            })
+
+            this.logger.error(`App stream execution failed: ${executionId}`, error)
+
+            // 发送错误事件
+            onEvent({
+                type: 'error',
+                data: {
+                    executionId,
+                    code: 'EXECUTION_ERROR',
+                    message: errorMessage,
+                    duration,
+                },
+            })
         }
     }
 }

@@ -11,6 +11,12 @@ import { apiError, ErrorCode } from '@/lib/api-response'
 import { getCurrentUserId } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
+/**
+ * 取消发布应用 API
+ * POST /api/apps/[id]/unpublish
+ *
+ * 将应用标记为未发布，清除 API Key
+ */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
         const { id: appId } = await params
@@ -36,19 +42,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
             return apiError(ErrorCode.APP_NOT_FOUND, '应用不存在')
         }
 
+        // 2. 检查是否已发布
         if (!app.isPublished) {
             return apiError(ErrorCode.APP_NOT_FOUND, '应用未发布')
         }
 
+        // 3. 取消发布（保留发布版本历史，仅清除激活状态）
         await prisma.app.update({
             where: {
                 id: appId,
             },
             data: {
                 isPublished: false,
-                apiKey: null,
                 publishedAt: null,
-                publishedWorkflowId: null,
+                activePublishedId: null,
             },
         })
 

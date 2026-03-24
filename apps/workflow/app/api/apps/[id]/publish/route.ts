@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import { Prisma } from '@/generated/prisma/client'
 import { apiError, ErrorCode } from '@/lib/api-response'
 import { getCurrentUserId } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -27,7 +28,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
                 id: true,
                 isPublished: true,
                 publishedAt: true,
-                publishedWorkflowId: true,
+                activePublishedId: true,
+                activePublished: {
+                    select: {
+                        id: true,
+                        version: true,
+                        publishedAt: true,
+                    },
+                },
             },
         })
 
@@ -50,7 +58,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
  * 发布应用 API
  * POST /api/apps/[id]/publish
  *
- * 验证权限后，锁定当前工作流版本，将应用标记为已发布
+ *  验证权限后，创建工作流快照（PublishedApp），将应用标记为已发布
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -60,7 +68,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         if (!userId) {
             return apiError(ErrorCode.UNAUTHORIZED, '请先登录')
         }
-
+        // 1. 验证应用存在性和权限，同时获取当前发布状态
         const app = await prisma.app.findFirst({
             where: {
                 id: appId,
@@ -71,14 +79,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 id: true,
                 name: true,
                 isPublished: true,
-                publishedWorkflowId: true,
+                description: true,
+                activePublishedId: true,
             },
         })
 
         if (!app) {
             return apiError(ErrorCode.APP_NOT_FOUND, '应用不存在')
         }
-
+        // 2. 获取最新工作流
         const workflow = await prisma.workflow.findFirst({
             where: {
                 appId,
@@ -88,6 +97,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             },
         })
 
+        // 3. 验证工作流有效
         if (!workflow) {
             return apiError(ErrorCode.INVALID_WORKFLOW, '工作流不存在')
         }
@@ -97,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             return apiError(ErrorCode.INVALID_WORKFLOW, '工作流节点不存在')
         }
 
-        // 3. 验证工作流必须有开始节点和结束节点
+        // 4. 验证工作流必须有开始节点和结束节点
         const nodeTypes = workflowNodes.map(n => n.type)
         if (!nodeTypes.includes('start')) {
             return apiError(ErrorCode.INVALID_WORKFLOW, '工作流缺少开始节点，无法发布')
@@ -106,16 +116,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             return apiError(ErrorCode.INVALID_WORKFLOW, '工作流缺少结束节点，无法发布')
         }
 
-        // 4. 检查是否是更新发布
+        // 5. 检查是否是更新发布
         const isUpdate = app.isPublished
 
+        // 6. 获取当前应用的最大发布版本号
+        const latestPublished = await prisma.publishedApp.findFirst({
+            where: { appId },
+            orderBy: { version: 'desc' },
+            select: { version: true },
+        })
+        const nextVersion = (latestPublished?.version ?? 0) + 1
+
+        // 7. 创建新的发布版本（工作流快照）
+        const publishedApp = await prisma.publishedApp.create({
+            data: {
+                version: nextVersion,
+                name: app.name,
+                description: app.description,
+                nodes: workflow.nodes as Prisma.InputJsonValue,
+                edges: workflow.edges as Prisma.InputJsonValue,
+                appId,
+                publishedBy: userId,
+            },
+        })
+
+        // 8. 更新应用发布状态，指向新的发布版本
         await prisma.app.update({
             where: {
                 id: app.id,
             },
             data: {
                 isPublished: true,
-                publishedWorkflowId: workflow.id,
+                activePublishedId: publishedApp.id,
                 publishedAt: new Date(),
             },
         })
@@ -124,6 +156,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             success: true,
             data: {
                 isUpdate,
+                version: nextVersion,
+                publishedAppId: publishedApp.id,
                 message: isUpdate ? '应用已更新发布！' : '应用发布成功！',
             },
         })

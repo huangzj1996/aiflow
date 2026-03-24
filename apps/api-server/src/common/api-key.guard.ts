@@ -1,12 +1,12 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common'
 import { Request } from 'express'
 
-import { PrismaService } from '../prisma/prisma.service.js'
+import { PrismaService } from '../prisma/prisma.service'
 // 扩展 Request 类型，添加自定义属性
 export interface AppContext {
     id: string
     name: string
-    publishedWorkflowId: string | null
+    activePublishedId: string | null // 当前激活的发布版本 ID
 }
 
 export interface ApiKeyContext {
@@ -71,7 +71,7 @@ export class ApiKeyGuard implements CanActivate {
                         name: true,
                         isPublished: true,
                         isDeleted: true,
-                        publishedWorkflowId: true,
+                        activePublishedId: true,
                     },
                 },
             },
@@ -122,7 +122,7 @@ export class ApiKeyGuard implements CanActivate {
         request.appContext = {
             id: apiKey.app.id,
             name: apiKey.app.name,
-            publishedWorkflowId: apiKey.app.publishedWorkflowId ? apiKey.app.publishedWorkflowId : null,
+            activePublishedId: apiKey.app.activePublishedId ? apiKey.app.activePublishedId : null,
         }
         request.apiKeyContext = {
             id: apiKey.id,

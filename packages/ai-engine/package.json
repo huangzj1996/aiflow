@@ -5,16 +5,9 @@
     "description": "",
     "type": "module",
     "source": "src/index.ts",
-    "main": "build/cjs/index.js",
+    "main": "build/cjs/index.cjs",
     "module": "build/esm/index.js",
-    "exports": {
-        ".": {
-            "import": "./build/esm/index.js"
-        },
-        "./style.css": {
-            "import": "./build/esm/style.css"
-        }
-    },
+    "types": "build/esm/index.d.ts",
     "scripts": {
         "test": "echo \"Error: no test specified\" && exit 1",
         "build": "tsup",

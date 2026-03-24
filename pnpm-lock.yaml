@@ -80,6 +80,9 @@ importers:
 
   apps/api-server:
     dependencies:
+      '@aiflow-demo/ai-engine':
+        specifier: workspace:*
+        version: link:../../packages/ai-engine
       '@nestjs/common':
         specifier: ^11.0.1
         version: 11.1.17(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)

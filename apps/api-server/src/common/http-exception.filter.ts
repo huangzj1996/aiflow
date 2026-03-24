@@ -14,7 +14,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     catch(exception: any, host: ArgumentsHost) {
         const ctx = host.switchToHttp()
         const response = ctx.getResponse<Response>()
-
+        // 如果响应头已发送（如 SSE 流式模式），跳过错误响应处理
+        // 因为 SSE 模式下错误已通过事件发送给客户端
+        if (response.headersSent) {
+            if (exception instanceof Error) {
+                this.logger.warn(`Exception occurred after headers sent: ${exception.message}`)
+            }
+            return
+        }
         let status = HttpStatus.INTERNAL_SERVER_ERROR
         let errorResponse: ErrorResponse = {
             code: 'INTERNAL_SERVER_ERROR',
