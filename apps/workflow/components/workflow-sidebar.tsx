@@ -35,7 +35,7 @@ export function WorkflowSidebar() {
     const isActive = (url: string) => pathname.includes(`/${url}`)
 
     return (
-        <aside className="w-[220px] bg-white flex flex-col shrink-0">
+        <aside className="w-55 bg-violet-50/20 flex flex-col shrink-0">
             {/* 应用信息 */}
             <div className="p-3">
                 <div className="flex items-center justify-between mb-2">

@@ -1,5 +1,5 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Suspense, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { toast } from 'sonner'
@@ -31,7 +31,6 @@ function LoginForm() {
     const [inputType, setInputType] = useState<'login' | 'register'>('login')
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
-    const searchParams = useSearchParams()
     const handleSubmit = async (values: LoginFormValues) => {
         setIsLoading(true)
 
@@ -56,6 +55,7 @@ function LoginForm() {
                 }
 
                 toast.success('登录成功')
+                const searchParams = new URLSearchParams(window.location.search)
                 const redirectUrl = searchParams.get('redirect') || '/apps'
                 router.push(redirectUrl)
             }

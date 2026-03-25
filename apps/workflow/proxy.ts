@@ -22,12 +22,17 @@ export function proxy(request: NextRequest) {
     const token = request.cookies.get('auth-token')?.value
 
     if (!token) {
-        // if (pathname.startsWith('/api/')) {
-        //     return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
-        // }
-        // const loginUrl = new URL('/account/login', request.url)
-        // loginUrl.searchParams.set('redirect', pathname)
-        // return NextResponse.redirect(loginUrl)
+        if (pathname.startsWith('/api/')) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+        }
+        const loginUrl = new URL('/account/login', request.url)
+        loginUrl.searchParams.set('redirect', pathname)
+        return NextResponse.redirect(loginUrl)
+    }
+
+    if (pathname === '/') {
+        const loginUrl = new URL('/apps', request.url)
+        return NextResponse.redirect(loginUrl)
     }
 
     return NextResponse.next()

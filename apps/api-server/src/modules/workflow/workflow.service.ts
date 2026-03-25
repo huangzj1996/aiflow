@@ -198,6 +198,7 @@ export class WorkflowService {
                 edges: publishedApp.edges as unknown as WorkflowDefinition['edges'],
             }
 
+            let totalTokens = 0
             // 执行工作流（带实时回调）
             const result = await engine.execute(workflowDefinition, dto.inputs, {
                 onNodeStart(nodeId, nodeType, nodeName) {
@@ -207,6 +208,9 @@ export class WorkflowService {
                     })
                 },
                 onNodeEnd(nodeId, result) {
+                    if (result.outputs?.tokens && typeof result.outputs.tokens === 'number') {
+                        totalTokens += result.outputs?.tokens
+                    }
                     onEvent({
                         type: 'node:end',
                         data: { nodeId, success: result.success, outputs: result.outputs, duration: result.duration, executionId },
@@ -238,6 +242,7 @@ export class WorkflowService {
                     duration,
                     nodeTraces: result.logs as object,
                     completedAt: new Date(),
+                    totalTokens,
                 },
             })
 

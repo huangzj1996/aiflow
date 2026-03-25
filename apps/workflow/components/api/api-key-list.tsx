@@ -94,116 +94,130 @@ export function ApiKeyList({ appId }: ApiKeyListProps) {
         return new Date(expiresAt) < new Date()
     }
 
+    // 渲染状态
+    const renderStatus = (apiKey: ApiKeyInfo) => {
+        if (isExpired(apiKey.expiresAt)) {
+            return (
+                <span className="inline-flex items-center gap-1.5 font-medium text-red-600">
+                    <span className="size-2 rounded-full bg-red-500" />
+                    已过期
+                </span>
+            )
+        }
+        if (apiKey.isActive) {
+            return (
+                <span className="inline-flex items-center gap-1.5 font-medium text-green-600">
+                    <span className="size-2 rounded-full bg-green-500" />
+                    启用
+                </span>
+            )
+        }
+        return (
+            <span className="text-muted-foreground inline-flex items-center gap-1.5 font-medium">
+                <span className="bg-muted-foreground/50 size-2 rounded-full" />
+                禁用
+            </span>
+        )
+    }
+
     useEffect(() => {
         loadApiKeys()
     }, [loadApiKeys])
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <KeyIcon className="size-5" />
-                            API Keys
-                        </CardTitle>
-                        <CardDescription>管理应用的 API 访问密钥，用于外部系统调用</CardDescription>
-                    </div>
-                    <Button onClick={() => setCreateDialogOpen(true)}>
+        <div>
+            {/* 标题和操作 */}
+            <div className="mb-4 flex items-center justify-between">
+                <div>
+                    <h2 className="text-lg font-semibold">API Keys</h2>
+                    <p className="text-muted-foreground text-sm">管理应用的 API 访问密钥，用于外部系统调用</p>
+                </div>
+                <Button onClick={() => setCreateDialogOpen(true)}>
+                    <PlusIcon className="size-4" />
+                    创建 API Key
+                </Button>
+            </div>
+            {loading ? (
+                <div className="space-y-3">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full" />
+                    ))}
+                </div>
+            ) : apiKeys.length === 0 ? (
+                <div className="py-16 text-center">
+                    <KeyIcon className="text-muted-foreground/30 mx-auto mb-4 size-16" />
+                    <h3 className="text-muted-foreground mb-1 font-medium">还没有 API Key</h3>
+                    <p className="text-muted-foreground/70 mb-4 text-sm">创建 API Key 以便外部系统调用此应用</p>
+                    <Button variant="outline" onClick={() => setCreateDialogOpen(true)}>
                         <PlusIcon className="size-4" />
-                        创建 API Key
+                        创建第一个 API Key
                     </Button>
                 </div>
-            </CardHeader>
-            <CardContent>
-                {loading ? (
-                    <div className="space-y-3">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <Skeleton key={i} className="h-12 w-full" />
-                        ))}
-                    </div>
-                ) : apiKeys.length === 0 ? (
-                    <div className="text-center py-8">
-                        <KeyIcon className="size-12 mx-auto mb-3 text-muted-foreground/50" />
-                        <h3 className="font-medium mb-1">还没有 API Key</h3>
-                        <p className="text-sm text-muted-foreground mb-4">创建 API Key 以便外部系统调用此应用</p>
-                        <Button variant="outline" onClick={() => setCreateDialogOpen(true)}>
-                            <PlusIcon className="size-4" />
-                            创建第一个 API Key
-                        </Button>
-                    </div>
-                ) : (
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>名称</TableHead>
-                                <TableHead>Key</TableHead>
-                                <TableHead>状态</TableHead>
-                                <TableHead>使用次数</TableHead>
-                                <TableHead>最后使用</TableHead>
-                                <TableHead>过期时间</TableHead>
-                                <TableHead>创建时间</TableHead>
-                                <TableHead className="w-20">操作</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {apiKeys.map(apiKey => (
-                                <TableRow key={apiKey.id}>
-                                    <TableCell className="font-medium">{apiKey.name}</TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <code className="text-xs bg-muted px-2 py-1 rounded">{apiKey.keyPrefix}</code>
-                                            <Button variant="ghost" size="icon-sm" onClick={() => handleCopy(apiKey.keyPrefix)}>
-                                                <CopyIcon className="size-3" />
+            ) : (
+                <Table>
+                    <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                            <TableHead className="text-muted-foreground font-normal">名称</TableHead>
+                            <TableHead className="text-muted-foreground font-normal">Key</TableHead>
+                            <TableHead className="text-muted-foreground w-[100px] font-normal">状态</TableHead>
+                            <TableHead className="text-muted-foreground w-[100px] font-normal">使用次数</TableHead>
+                            <TableHead className="text-muted-foreground font-normal">最后使用</TableHead>
+                            <TableHead className="text-muted-foreground font-normal">过期时间</TableHead>
+                            <TableHead className="text-muted-foreground font-normal">创建时间</TableHead>
+                            <TableHead className="text-muted-foreground w-[60px] font-normal">操作</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {apiKeys.map(apiKey => (
+                            <TableRow key={apiKey.id} className="hover:bg-muted/30">
+                                <TableCell className="font-medium">{apiKey.name}</TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <code className="bg-muted rounded px-2 py-1 text-xs">{apiKey.keyPrefix}</code>
+                                        <Button variant="ghost" size="icon-sm" onClick={() => handleCopy(apiKey.keyPrefix)}>
+                                            <CopyIcon className="size-3" />
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                                <TableCell>
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={apiKey.isActive}
+                                            onCheckedChange={checked => handleToggleStatus(apiKey.id, checked)}
+                                            disabled={isExpired(apiKey.expiresAt)}
+                                        />
+                                        {renderStatus(apiKey)}
+                                    </div>
+                                </TableCell>
+                                <TableCell className="text-foreground">{apiKey.usageCount}</TableCell>
+                                <TableCell className="text-muted-foreground">{formatDate(apiKey.lastUsedAt)}</TableCell>
+                                <TableCell className={isExpired(apiKey.expiresAt) ? 'text-red-600' : 'text-muted-foreground'}>
+                                    {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : '永不过期'}
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">{formatDate(apiKey.createdAt)}</TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon-sm">
+                                                <MoreHorizontalIcon className="size-4" />
                                             </Button>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            <Switch
-                                                checked={apiKey.isActive}
-                                                onCheckedChange={checked => handleToggleStatus(apiKey.id, checked)}
-                                                disabled={isExpired(apiKey.expiresAt)}
-                                            />
-                                            {isExpired(apiKey.expiresAt) ? (
-                                                <Badge variant="destructive">已过期</Badge>
-                                            ) : apiKey.isActive ? (
-                                                <Badge variant="default">启用</Badge>
-                                            ) : (
-                                                <Badge variant="secondary">禁用</Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>{apiKey.usageCount}</TableCell>
-                                    <TableCell className="text-muted-foreground">{formatDate(apiKey.lastUsedAt)}</TableCell>
-                                    <TableCell className={isExpired(apiKey.expiresAt) ? 'text-destructive' : ''}>
-                                        {apiKey.expiresAt ? formatDate(apiKey.expiresAt) : '永不过期'}
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground">{formatDate(apiKey.createdAt)}</TableCell>
-                                    <TableCell>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon-sm">
-                                                    <MoreHorizontalIcon className="size-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(apiKey.id)}>
-                                                    <TrashIcon className="size-4" />
-                                                    删除
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                )}
-            </CardContent>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(apiKey.id)}>
+                                                <TrashIcon className="size-4" />
+                                                删除
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            )}
 
             {/* 创建 API Key 对话框 */}
             <CreateApiKeyDialog appId={appId} open={createDialogOpen} onOpenChange={setCreateDialogOpen} onCreated={handleCreated} />
-        </Card>
+        </div>
     )
 }
