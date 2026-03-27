@@ -9,10 +9,11 @@
     "module": "build/esm/index.js",
     "types": "build/esm/index.d.ts",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
         "build": "tsup",
         "clean": "rimraf build",
         "typeCheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
         "example": "tsx example/index.ts"
     },
     "keywords": [],
@@ -22,10 +23,12 @@
         "@langchain/langgraph": "1.2.0",
         "@langchain/ollama": "1.2.6",
         "@langchain/core": "1.1.30",
+        "@qdrant/js-client-rest": "^1.16.2",
         "zod": "^3.25.76"
     },
     "devDependencies": {
         "tsx": "4.21.0",
-        "ts-node": "^10.9.2"
+        "ts-node": "^10.9.2",
+        "vitest": "^4.0.16"
     }
 }

@@ -91,12 +91,12 @@ export class ApiKeyGuard implements CanActivate {
             })
         }
 
-        // if (!apiKey.expiresAt) {
-        //     throw new UnauthorizedException({
-        //         code: 'API_KEY_EXPIRED',
-        //         message: 'API Key 已过期',
-        //     })
-        // }
+        if (!apiKey.expiresAt) {
+            throw new UnauthorizedException({
+                code: 'API_KEY_EXPIRED',
+                message: 'API Key 已过期',
+            })
+        }
 
         if (!apiKey.app || apiKey.app.isDeleted) {
             throw new UnauthorizedException({

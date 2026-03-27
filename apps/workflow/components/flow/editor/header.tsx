@@ -1,5 +1,7 @@
+'use client'
 import { IconHistory } from '@tabler/icons-react'
 import { ArrowLeftIcon, CheckCircle2, ChevronDownIcon, Globe, History, Play, PlayCircle } from 'lucide-react'
+import Link from 'next/link'
 import { memo, useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -216,7 +218,7 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                             <ChevronDownIcon className="h-4 w-4 ml-1" />
                         </Button>
                     </PopoverTrigger>
-                    <PopoverContent align="end" sideOffset={6} className="rounded-xl p-0 text-sm bg-white w-56">
+                    <PopoverContent align="end" sideOffset={6} className="rounded-xl p-0 text-sm bg-white w-80">
                         {publishStatus.isPublished ? (
                             <>
                                 {/* 已发布状态 */}
@@ -231,7 +233,6 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                                         )}
                                     </div>
                                 </div>
-                                <Separator />
                                 <div className="p-3 space-y-2">
                                     <Button
                                         variant="default"
@@ -251,6 +252,17 @@ export const FlowEditorHeader = memo(function FlowEditorHeader({
                                     >
                                         {isPublishing ? '处理中...' : '取消发布'}
                                     </Button>
+                                    <Separator className="my-2 bg-gray-100" />
+                                    {process.env.NEXT_PUBLIC_WEBAPP_URL && (
+                                        <Link
+                                            className="flex items-center rounded-md px-4 py-1.5 bg-gray-100 hover:bg-gray-200"
+                                            target="_blank"
+                                            href={`${process.env.NEXT_PUBLIC_WEBAPP_URL}/workflow/${appId}`}
+                                        >
+                                            <PlayCircle className="h-4 w-4 mr-2" />
+                                            运行
+                                        </Link>
+                                    )}
                                 </div>
                             </>
                         ) : (

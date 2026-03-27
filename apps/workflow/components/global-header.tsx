@@ -73,7 +73,7 @@ export function GlobalHeader() {
     }
 
     return (
-        <header className="h-12 border-b border-b-muted-foreground/10 bg-[#F3F4FA] shadow-sm flex items-center px-4 gap-4 shrink-0">
+        <header className="h-12 border-b border-b-muted-foreground/10 bg-[#F3F4FA] flex items-center px-4 gap-4 shrink-0">
             {/* 左侧 Logo 和 Workspace */}
             <div className="flex items-center gap-3">
                 {/* Logo */}

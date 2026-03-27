@@ -24,5 +24,8 @@ export type { LogCallback } from './logger'
 // 核心工具
 export { createExecutionContext, GraphBuilder, VariableResolver } from './core'
 
+// 知识库模块 (RAG)
+export * from './knowledge'
+
 // 版本信息
 export const VERSION = '1.0.0'
