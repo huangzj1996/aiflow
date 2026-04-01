@@ -152,3 +152,31 @@ export interface OutputParam {
 export interface EndNodeConfig {
     outputs: OutputParam[]
 }
+
+/**
+ * 知识库检索模式
+ */
+export type KnowledgeRetrievalMode = 'vector' | 'fulltext' | 'hybrid'
+
+/**
+ * 知识库检索输出格式
+ */
+export type KnowledgeOutputFormat = 'text' | 'json'
+
+/**
+ * KNOWLEDGE 节点配置
+ */
+export interface KnowledgeNodeConfig {
+    /** 知识库ID列表 */
+    knowledgeBaseIds: string[]
+    /** 查询内容 （支持变量引用） */
+    query: string
+    /** 检索模式 */
+    retrievalMode: KnowledgeRetrievalMode
+    /** 返回结果数量 */
+    topK: number
+    /** 相似度阈值（0-1） */
+    threshold?: number
+    /** 输出格式 */
+    outputFormat: KnowledgeOutputFormat
+}

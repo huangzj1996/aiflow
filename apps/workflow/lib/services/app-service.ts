@@ -130,7 +130,7 @@ class AppService {
      * 发布应用
      */
     async publish(id: string): Promise<AppInfo> {
-        return this.request<AppInfo>(`${this.baseUrl}/${id}/publish`, {
+        return this.request<AppInfo>(`${this.baseUrl}/${id}/`, {
             method: 'POST',
         })
     }

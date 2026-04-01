@@ -14,8 +14,7 @@ export class QdrantVectorStore implements VectorStoreService {
     constructor(config?: Partial<VectorStoreConfig>) {
         const { url, collectionName } = { ...DEFAULT_VECTOR_STORE_CONFIG, ...config }
 
-        this.client = new QdrantClient({ url, checkCompatibility: false })
-
+        this.client = new QdrantClient({ url })
         this.collectionName = collectionName
     }
 
@@ -68,6 +67,7 @@ export class QdrantVectorStore implements VectorStoreService {
         }
 
         try {
+            // 转换为 Qdrant 格式
             const points = chunks.map(chunk => ({
                 id: this.stringToUuid(chunk.id),
                 vector: chunk.vector,
@@ -75,15 +75,15 @@ export class QdrantVectorStore implements VectorStoreService {
                     chunkId: chunk.id,
                     content: chunk.content,
                     chunkIndex: chunk.index,
+                    startOffset: chunk.startOffset,
+                    endOffset: chunk.endOffset,
                     documentId: chunk.documentId,
                     knowledgeBaseId: chunk.knowledgeBaseId,
                     metadata: chunk.metadata || {},
-                    startOffset: chunk.startOffset,
-                    endOffset: chunk.endOffset,
                 },
             }))
 
-            // 批量插入
+            // 批量插入（每批最多 100 个）
             const BATCH_SIZE = 100
             for (let i = 0; i < points.length; i += BATCH_SIZE) {
                 const batch = points.slice(i, i + BATCH_SIZE)
@@ -219,6 +219,100 @@ export class QdrantVectorStore implements VectorStoreService {
     }
 
     /**
+     * 文本搜索（基于 payload 内容匹配）
+     * 支持分词匹配和相关性评分
+     */
+    async textSearch(options: { query: string; knowledgeBaseIds: string[]; topK: number }): Promise<VectorSearchResult[]> {
+        const { query, knowledgeBaseIds, topK } = options
+
+        if (!query || query.trim().length === 0) {
+            throw new Error('Query cannot be empty')
+        }
+
+        if (!knowledgeBaseIds || knowledgeBaseIds.length === 0) {
+            throw new Error('Knowledge base IDs cannot be empty')
+        }
+
+        try {
+            // 使用 scroll 获取所有匹配知识库的切片
+            const response = await this.client.scroll(this.collectionName, {
+                filter: {
+                    must: [
+                        {
+                            key: 'knowledgeBaseId',
+                            match: { any: knowledgeBaseIds },
+                        },
+                    ],
+                },
+                limit: 1000,
+                with_payload: true,
+                with_vector: false,
+            })
+
+            // 分词（支持中英文）
+            const queryLower = query.toLowerCase()
+            const queryTerms = queryLower.split(/[\s,，。.!！?？;；:：、]+/).filter(term => term.length > 0)
+
+            const matchedResults: Array<{ result: VectorSearchResult; matchScore: number }> = []
+
+            for (const point of response.points) {
+                const content = (point.payload?.content as string) || ''
+                const contentLower = content.toLowerCase()
+
+                // 计算匹配分数
+                let matchScore = 0
+                let matchedTerms = 0
+
+                // 完整查询匹配（权重更高）
+                if (contentLower.includes(queryLower)) {
+                    matchScore += 2
+                }
+
+                // 分词匹配
+                for (const term of queryTerms) {
+                    if (contentLower.includes(term)) {
+                        matchedTerms++
+                        // 根据词频增加分数
+                        const regex = new RegExp(term, 'gi')
+                        const matches = content.match(regex)
+                        matchScore += matches ? matches.length * 0.5 : 0
+                    }
+                }
+
+                // 至少匹配一个词才计入结果
+                if (matchScore > 0 || matchedTerms > 0) {
+                    matchScore += (matchedTerms / Math.max(queryTerms.length, 1)) * 1.5
+
+                    matchedResults.push({
+                        result: {
+                            chunkId: (point.payload?.chunkId as string) || '',
+                            content,
+                            chunkIndex: (point.payload?.chunkIndex as number) || 0,
+                            documentId: (point.payload?.documentId as string) || '',
+                            knowledgeBaseId: (point.payload?.knowledgeBaseId as string) || '',
+                            score: matchScore,
+                            metadata: (point.payload?.metadata as Record<string, unknown>) || undefined,
+                        },
+                        matchScore,
+                    })
+                }
+            }
+
+            // 按匹配分数排序
+            matchedResults.sort((a, b) => b.matchScore - a.matchScore)
+
+            // 归一化分数到 0-1 范围
+            const maxScore = matchedResults[0]?.matchScore || 1
+            return matchedResults.slice(0, topK).map(({ result, matchScore }) => ({
+                ...result,
+                score: matchScore / maxScore,
+            }))
+        } catch (error) {
+            throw new Error(`Failed to perform text search: ${error instanceof Error ? error.message : String(error)}`)
+        }
+    }
+
+    /**
      * 将字符串 ID 转换为 UUID 格式
      * Qdrant 需要 UUID 或整数作为点 ID
      * UUID 格式: 8-4-4-4-12 (共 36 字符)
@@ -251,6 +345,6 @@ export class QdrantVectorStore implements VectorStoreService {
 /**
  * 创建 Qdrant 向量存储实例
  */
-export function createQdrantVectorStore(config?: Partial<VectorStoreConfig>) {
+export function createQdrantVectorStore(config?: Partial<VectorStoreConfig>): VectorStoreService {
     return new QdrantVectorStore(config)
 }

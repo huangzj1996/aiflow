@@ -68,6 +68,7 @@ function getDefaultNodeTitle(type?: string): string {
         http: 'HTTP 请求',
         condition: '条件分支',
         end: '结束',
+        knowledge: '知识库',
     }
     return titles[type || ''] || '节点'
 }

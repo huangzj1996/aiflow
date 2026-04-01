@@ -1,6 +1,7 @@
 import ConditionNode from './condition-node'
 import EndNode from './end-node'
 import HttpNode from './http-node'
+import { KnowledgeNode } from './knowledge-node'
 import LLMNode from './llm-node'
 import StartNode from './start-node'
 import ToolNode from './tool-node'
@@ -12,6 +13,7 @@ export const nodeTypes = {
     condition: ConditionNode,
     end: EndNode,
     http: HttpNode,
+    knowledge: KnowledgeNode,
 }
 
 export { StartNode }
@@ -20,3 +22,4 @@ export { ToolNode }
 export { ConditionNode }
 export { EndNode }
 export { HttpNode }
+export { KnowledgeNode }

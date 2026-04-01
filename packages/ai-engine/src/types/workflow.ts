@@ -1,5 +1,5 @@
 /** 工作流节点类型 */
-export type NodeKind = 'start' | 'llm' | 'condition' | 'http' | 'end'
+export type NodeKind = 'start' | 'llm' | 'condition' | 'http' | 'end' | 'knowledge'
 
 /** 工作流节点 */
 export interface WorkflowNode {

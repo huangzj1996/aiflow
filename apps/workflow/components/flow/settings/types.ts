@@ -4,7 +4,7 @@ import { ComponentType } from 'react'
 /**
  * 节点类型
  */
-export type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end' | 'http'
+export type NodeKind = 'start' | 'llm' | 'tool' | 'condition' | 'end' | 'http' | 'knowledge'
 
 /**
  * 流程上下文 - 包含所有节点和边的信息

@@ -30,7 +30,7 @@ import { TestRunPanel } from '../test-run'
 import { FlowEditorContext } from './context'
 import { type EditorMode, FlowEditorHeader } from './header'
 
-type NodeKind = 'start' | 'llm' | 'condition' | 'end' | 'http'
+type NodeKind = 'start' | 'llm' | 'condition' | 'end' | 'http' | 'knowledge'
 
 export type FlowNodeData = {
     label?: string
@@ -125,6 +125,17 @@ const defaultNodeConfigs: Record<NodeKind, { label: string; config: Record<strin
     end: {
         label: '结束输出',
         config: {},
+    },
+    knowledge: {
+        label: '知识库',
+        config: {
+            knowledgeBaseIds: [],
+            query: '',
+            retrievalMode: 'vector',
+            topK: 5,
+            threshold: 0.2,
+            outputFormat: 'text',
+        },
     },
 }
 interface FlowEditorProps {

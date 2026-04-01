@@ -1,6 +1,6 @@
 import { Handle as XYFlowHandle, Position } from '@xyflow/react'
 import clsx from 'clsx'
-import { Brain, GitBranch, Globe, Terminal } from 'lucide-react'
+import { BookOpen, Brain, GitBranch, Globe, Terminal } from 'lucide-react'
 import React, { CSSProperties } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useFlowEditorContext } from '../editor/context'
 import { getColor } from '../icon-map'
 
-export type NodeKind = 'start' | 'llm' | 'http' | 'condition' | 'end'
+export type NodeKind = 'start' | 'llm' | 'http' | 'condition' | 'end' | 'knowledge'
 
 interface NodeItem {
     type: NodeKind
@@ -24,6 +24,12 @@ const nodeItems: NodeItem[] = [
         label: '大模型',
         description: '调用 LLM 进行文本处理',
         icon: <Brain size={14} />,
+    },
+    {
+        type: 'knowledge',
+        label: '知识库',
+        description: '从知识库检索相关内容',
+        icon: <BookOpen size={14} />,
     },
     {
         type: 'http',

@@ -1,6 +1,7 @@
 import { OllamaEmbeddings } from '@langchain/ollama'
 
-import { DEFAULT_EMBEDDING_CONFIG, type EmbeddingConfig, type EmbeddingService } from '../types'
+import type { EmbeddingConfig, EmbeddingService } from '../types'
+import { DEFAULT_EMBEDDING_CONFIG } from '../types'
 
 /**
  * Ollama 嵌入服务
@@ -34,6 +35,7 @@ export class OllamaEmbeddingService implements EmbeddingService {
             throw new Error(`Failed to embed text: ${error instanceof Error ? error.message : String(error)}`)
         }
     }
+
     /**
      * 批量获取文本的嵌入向量
      */
@@ -51,7 +53,6 @@ export class OllamaEmbeddingService implements EmbeddingService {
 
         try {
             const vectors = await this.embeddings.embedDocuments(validTexts)
-
             return vectors
         } catch (error) {
             throw new Error(`Failed to embed texts: ${error instanceof Error ? error.message : String(error)}`)

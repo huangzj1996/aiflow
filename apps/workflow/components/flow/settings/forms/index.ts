@@ -15,3 +15,6 @@ export type { ConditionNodeConfig, Intent } from './condition-settings-form'
 
 export { HttpSettingsForm } from './http-settings-form'
 export type { HttpNodeConfig, HttpMethod } from './http-settings-form'
+
+export { KnowledgeSettingsForm } from './knowledge-settings-form'
+export type { KnowledgeNodeConfig, KnowledgeOutputFormat, KnowledgeRetrievalMode } from './knowledge-settings-form'

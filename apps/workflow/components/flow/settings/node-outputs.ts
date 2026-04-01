@@ -59,6 +59,14 @@ export function getNodeTypeOutputs(nodeType: NodeKind, nodeData?: any): NodeOutp
                 { name: 'matchedIntent', label: '匹配意图', type: 'string', description: '匹配到的意图名称' },
                 { name: 'confidence', label: '置信度', type: 'number', description: '匹配的置信度' },
             ]
+        case 'knowledge':
+            return [
+                { name: 'output', label: '输出内容', type: 'string', description: '检索结果（文本或 JSON 格式）' },
+                { name: 'results', label: '结果数组', type: 'array', description: '检索结果数组，包含详细信息' },
+                { name: 'count', label: '结果数量', type: 'number', description: '检索到的结果数量' },
+                { name: 'query', label: '查询内容', type: 'string', description: '实际执行的查询内容' },
+                { name: 'mode', label: '检索模式', type: 'string', description: '使用的检索模式' },
+            ]
         case 'end':
             // 结束节点没有输出
             return []
@@ -78,6 +86,7 @@ export function getNodeTypeLabel(nodeType: NodeKind): string {
         condition: '条件',
         end: '结束',
         tool: '工具',
+        knowledge: '知识库',
     }
     return labels[nodeType] || nodeType
 }

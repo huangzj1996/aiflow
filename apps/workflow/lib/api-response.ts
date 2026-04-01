@@ -61,6 +61,7 @@ export enum ErrorCode {
     VALIDATION_ERROR = 'VALIDATION_ERROR',
     INVALID_REQUEST = 'INVALID_REQUEST',
     NOT_FOUND = 'NOT_FOUND',
+
     // 认证错误 (2xxx)
     UNAUTHORIZED = 'UNAUTHORIZED',
     TOKEN_INVALID = 'TOKEN_INVALID',
@@ -93,6 +94,13 @@ export enum ErrorCode {
     API_KEY_DISABLED = 'API_KEY_DISABLED',
     API_KEY_LIMIT_EXCEEDED = 'API_KEY_LIMIT_EXCEEDED',
 
+    // 知识库错误
+    KNOWLEDGE_BASE_NOT_FOUND = 'KNOWLEDGE_BASE_NOT_FOUND',
+    KNOWLEDGE_BASE_NAME_INVALID = 'KNOWLEDGE_BASE_NAME_INVALID',
+    DOCUMENT_NOT_FOUND = 'DOCUMENT_NOT_FOUND',
+    DOCUMENT_UPLOAD_FAILED = 'DOCUMENT_UPLOAD_FAILED',
+    DOCUMENT_PROCESSING_FAILED = 'DOCUMENT_PROCESSING_FAILED',
+
     // 资源错误 (4xxx)
     RESOURCE_NOT_FOUND = 'RESOURCE_NOT_FOUND',
     RESOURCE_ALREADY_EXISTS = 'RESOURCE_ALREADY_EXISTS',
@@ -124,8 +132,11 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.USER_NOT_FOUND]: 404,
     [ErrorCode.INVALID_VERIFY_TOKEN]: 400,
 
-    [ErrorCode.RESOURCE_NOT_FOUND]: 404,
-    [ErrorCode.RESOURCE_ALREADY_EXISTS]: 400,
+    [ErrorCode.APP_NOT_FOUND]: 404,
+    [ErrorCode.APP_ALREADY_EXISTS]: 400,
+    [ErrorCode.APP_NAME_INVALID]: 400,
+    [ErrorCode.APP_DELETE_FAILED]: 500,
+    [ErrorCode.APP_UPDATE_FAILED]: 500,
     [ErrorCode.INVALID_WORKFLOW]: 400,
     [ErrorCode.INVALID_OPERATION]: 400,
 
@@ -135,11 +146,14 @@ export const ErrorCodeHttpStatusMap: Record<ErrorCode, number> = {
     [ErrorCode.API_KEY_DISABLED]: 403,
     [ErrorCode.API_KEY_LIMIT_EXCEEDED]: 429,
 
-    [ErrorCode.APP_NOT_FOUND]: 404,
-    [ErrorCode.APP_ALREADY_EXISTS]: 400,
-    [ErrorCode.APP_NAME_INVALID]: 400,
-    [ErrorCode.APP_DELETE_FAILED]: 500,
-    [ErrorCode.APP_UPDATE_FAILED]: 500,
+    [ErrorCode.KNOWLEDGE_BASE_NOT_FOUND]: 404,
+    [ErrorCode.KNOWLEDGE_BASE_NAME_INVALID]: 400,
+    [ErrorCode.DOCUMENT_NOT_FOUND]: 404,
+    [ErrorCode.DOCUMENT_UPLOAD_FAILED]: 500,
+    [ErrorCode.DOCUMENT_PROCESSING_FAILED]: 500,
+
+    [ErrorCode.RESOURCE_NOT_FOUND]: 404,
+    [ErrorCode.RESOURCE_ALREADY_EXISTS]: 400,
 
     [ErrorCode.INTERNAL_SERVER_ERROR]: 500,
     [ErrorCode.DATABASE_ERROR]: 500,
@@ -180,6 +194,12 @@ export const ErrorCodeMessageMap: Record<ErrorCode, string> = {
     [ErrorCode.API_KEY_EXPIRED]: 'API Key 已过期',
     [ErrorCode.API_KEY_DISABLED]: 'API Key 已禁用',
     [ErrorCode.API_KEY_LIMIT_EXCEEDED]: 'API Key 调用次数超限',
+
+    [ErrorCode.KNOWLEDGE_BASE_NOT_FOUND]: '知识库不存在',
+    [ErrorCode.KNOWLEDGE_BASE_NAME_INVALID]: '知识库名称无效',
+    [ErrorCode.DOCUMENT_NOT_FOUND]: '文档不存在',
+    [ErrorCode.DOCUMENT_UPLOAD_FAILED]: '文档上传失败',
+    [ErrorCode.DOCUMENT_PROCESSING_FAILED]: '文档处理失败',
 
     [ErrorCode.RESOURCE_NOT_FOUND]: '请求的资源不存在',
     [ErrorCode.RESOURCE_ALREADY_EXISTS]: '资源已存在',

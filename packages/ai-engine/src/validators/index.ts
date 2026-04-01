@@ -1,4 +1,4 @@
-import { ConditionValidator, EndValidator, HTTPValidator, LLMValidator, StartValidator } from './node-validators'
+import { ConditionValidator, EndValidator, HTTPValidator, KnowledgeValidator, LLMValidator, StartValidator } from './node-validators'
 import { DefaultWorkflowValidator } from './workflow-validator'
 
 export { DefaultWorkflowValidator } from './workflow-validator'
@@ -16,5 +16,6 @@ export function createDefaultWorkflowValidator(): DefaultWorkflowValidator {
         new LLMValidator(),
         new ConditionValidator(),
         new HTTPValidator(),
+        new KnowledgeValidator(),
     ])
 }

@@ -16,14 +16,14 @@ export interface FulltextSearchProvider {
  * 支持向量检索、全文检索、混合检索三种模式
  */
 export class HybridRetriever implements RetrieverService {
-    private vectorStore: VectorStoreService
-    private fulltextSearchProvider?: FulltextSearchProvider
     private embeddingService: EmbeddingService
+    private vectorStore: VectorStoreService
+    private fulltextProvider?: FulltextSearchProvider
 
-    constructor(embeddingService: EmbeddingService, vectorStore: VectorStoreService, fulltextSearchProvider?: FulltextSearchProvider) {
-        this.vectorStore = vectorStore
+    constructor(embeddingService: EmbeddingService, vectorStore: VectorStoreService, fulltextProvider?: FulltextSearchProvider) {
         this.embeddingService = embeddingService
-        this.fulltextSearchProvider = fulltextSearchProvider
+        this.vectorStore = vectorStore
+        this.fulltextProvider = fulltextProvider
     }
 
     /**
@@ -43,10 +43,10 @@ export class HybridRetriever implements RetrieverService {
         switch (mode) {
             case 'vector':
                 return this.vectorSearch(query, knowledgeBaseIds, topK, threshold)
-            case 'hybrid':
-                return this.hybridSearch(query, knowledgeBaseIds, topK, threshold, vectorWeight)
             case 'fulltext':
                 return this.fulltextSearch(query, knowledgeBaseIds, topK)
+            case 'hybrid':
+                return this.hybridSearch(query, knowledgeBaseIds, topK, threshold, vectorWeight)
             default:
                 throw new Error(`Unsupported retrieval mode: ${mode}`)
         }
@@ -61,16 +61,21 @@ export class HybridRetriever implements RetrieverService {
             const queryVector = await this.embeddingService.embedText(query.trim())
 
             // 向量搜索
-            const result = await this.vectorStore.search({ vector: queryVector, knowledgeBaseIds, topK, threshold })
+            const searchResults = await this.vectorStore.search({
+                vector: queryVector,
+                knowledgeBaseIds,
+                topK,
+                threshold,
+            })
 
-            return result.map(t => ({
-                chunkId: t.chunkId,
-                content: t.content,
-                chunkIndex: t.chunkIndex,
-                documentId: t.documentId,
-                knowledgeBaseId: t.knowledgeBaseId,
-                score: t.score,
-                metadata: t.metadata,
+            return searchResults.map(result => ({
+                chunkId: result.chunkId,
+                content: result.content,
+                chunkIndex: result.chunkIndex,
+                documentId: result.documentId,
+                knowledgeBaseId: result.knowledgeBaseId,
+                score: result.score,
+                metadata: result.metadata,
             }))
         } catch (error) {
             throw new Error(`Vector search failed: ${error instanceof Error ? error.message : String(error)}`)
@@ -81,12 +86,16 @@ export class HybridRetriever implements RetrieverService {
      * 全文检索
      */
     private async fulltextSearch(query: string, knowledgeBaseIds: string[], topK: number): Promise<RetrievalResult[]> {
-        if (!this.fulltextSearchProvider) {
+        if (!this.fulltextProvider) {
             throw new Error('Fulltext search provider is not configured')
         }
 
         try {
-            return await this.fulltextSearchProvider.search({ query: query.trim(), knowledgeBaseIds, topK })
+            return await this.fulltextProvider.search({
+                query: query.trim(),
+                knowledgeBaseIds,
+                topK,
+            })
         } catch (error) {
             throw new Error(`Fulltext search failed: ${error instanceof Error ? error.message : String(error)}`)
         }
@@ -108,7 +117,7 @@ export class HybridRetriever implements RetrieverService {
 
         const [vectorResults, fulltextResults] = await Promise.all([
             this.vectorSearch(query, knowledgeBaseIds, expandedTopK, threshold),
-            this.fulltextSearchProvider ? this.fulltextSearchProvider.search({ query: query.trim(), knowledgeBaseIds, topK }) : [],
+            this.fulltextProvider ? this.fulltextSearch(query, knowledgeBaseIds, expandedTopK) : Promise.resolve([]),
         ])
 
         // 如果没有全文检索结果，直接返回向量检索结果
@@ -116,8 +125,9 @@ export class HybridRetriever implements RetrieverService {
             return vectorResults.slice(0, topK)
         }
 
-        // 对向量检索结果和全文检索结果进行融合
+        // 融合结果（Reciprocal Rank Fusion）
         const fusedResults = this.reciprocalRankFusion(vectorResults, fulltextResults, vectorWeight)
+
         return fusedResults.slice(0, topK)
     }
 
@@ -138,7 +148,6 @@ export class HybridRetriever implements RetrieverService {
         vectorResults.forEach((result, index) => {
             const rrfScore = vectorWeight / (k + index + 1)
             const existing = scoreMap.get(result.chunkId)
-
             if (existing) {
                 existing.score += rrfScore
             } else {
@@ -150,7 +159,6 @@ export class HybridRetriever implements RetrieverService {
         fulltextResults.forEach((result, index) => {
             const rrfScore = fulltextWeight / (k + index + 1)
             const existing = scoreMap.get(result.chunkId)
-
             if (existing) {
                 existing.score += rrfScore
             } else {
@@ -158,9 +166,13 @@ export class HybridRetriever implements RetrieverService {
             }
         })
 
+        // 按融合分数排序
         return Array.from(scoreMap.values())
             .sort((a, b) => b.score - a.score)
-            .map(t => ({ ...t.result, score: t.score }))
+            .map(item => ({
+                ...item.result,
+                score: item.score,
+            }))
     }
 }
 
