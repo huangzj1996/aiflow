@@ -152,7 +152,6 @@ describe('QdrantVectorStore', () => {
         it('应该能搜索向量', async () => {
             const isHealthy = await store.healthCheck()
             if (!isHealthy) return
-            console.log('向量搜索', isHealthy)
 
             // 先确保有数据
             await store.ensureCollection(DIMENSIONS)
