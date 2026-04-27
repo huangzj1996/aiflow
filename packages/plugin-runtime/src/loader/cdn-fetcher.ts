@@ -28,7 +28,7 @@ import { PluginManifest } from '@aiflow/plugin-core'
 /**
  * CDN 获取器配置
  */
-export interface CNDFetcherConfig {
+export interface CDNFetcherConfig {
     /** CDN 基础URL */
     baseUrl?: string
     /** 请求超时时间 */
@@ -85,12 +85,12 @@ export interface FetchResult<T> {
  * CDN 资源获取器
  * 负责从 CDN 获取插件资源
  */
-export class CNDFetcher {
-    private config: Required<CNDFetcherConfig>
+export class CDNFetcher {
+    private config: Required<CDNFetcherConfig>
     private fetcher: typeof fetch
     private cache: Map<string, PluginResource> = new Map()
 
-    constructor(config: CNDFetcherConfig) {
+    constructor(config: CDNFetcherConfig) {
         this.config = {
             baseUrl: (config.baseUrl ?? '').replace(/\/$/, ''),
             timeout: config.timeout ?? 30000,

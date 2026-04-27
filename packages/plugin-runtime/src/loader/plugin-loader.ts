@@ -23,7 +23,7 @@
 import { PluginManifest, PluginNodeExecutor, PluginPermission, PluginServices } from '@aiflow/plugin-core'
 
 import { createSandboxContext, SandboxContext } from '../sandbox/sandbox-context'
-import { CNDFetcher, CNDFetcherConfig, PluginRemoteAssetUrls, PluginResource } from './cdn-fetcher'
+import { CDNFetcher, CDNFetcherConfig, PluginRemoteAssetUrls, PluginResource } from './cdn-fetcher'
 
 /**
  * 插件模块 - 加载后的插件实例
@@ -54,7 +54,7 @@ export interface PluginLoaderRemoteLoadOptions extends PluginRemoteAssetUrls {
  */
 export interface PluginLoaderConfig {
     /** CDN 配置 */
-    cdn: CNDFetcherConfig
+    cdn: CDNFetcherConfig
     /** 服务提供者（用于沙箱） */
     services: PluginLoaderServices
 }
@@ -100,12 +100,12 @@ export interface LoadResult {
  * 负责动态加载和管理插件
  */
 export class PluginLoader {
-    private fetcher: CNDFetcher
+    private fetcher: CDNFetcher
     private services: PluginLoaderServices
     private loadedPlugins: Map<string, PluginModule> = new Map()
 
     constructor(config: PluginLoaderConfig) {
-        this.fetcher = new CNDFetcher({
+        this.fetcher = new CDNFetcher({
             ...config.cdn,
             fetch: config.services.fetch,
         })
