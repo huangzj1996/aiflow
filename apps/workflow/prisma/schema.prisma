@@ -30,13 +30,13 @@ model User {
   // 关联知识库
   knowledgeBases KnowledgeBase[]
 
-  @@map("users")
-}
+  // 关联插件（作为作者）
+  plugins Plugin[]
 
-enum AppType {
-  WORKFLOW
-  CHATBOT
-  AGENT
+  // 关联插件安装
+  pluginInstallations PluginInstallation[]
+
+  @@map("users")
 }
 
 model App {
@@ -46,7 +46,7 @@ model App {
   icon        String   @default("🤖")
   type        AppType  @default(WORKFLOW)
   tags        String[] @default([])
-  config      Json?
+  config      Json? // 应用配置（工作流定义等）
   version     Int      @default(1)
   isPublished Boolean  @default(false)
   isDeleted   Boolean  @default(false)
@@ -61,7 +61,7 @@ model App {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  // 关联工作流（一个应用可以有多个工作流版本,用于编辑）
+  // 关联工作流（一个应用可以有多个工作流版本，用于编辑）
   workflows Workflow[]
 
   // 关联发布版本（一个应用可以有多个发布版本）
@@ -88,8 +88,8 @@ model Workflow {
   description String?
 
   // 工作流定义（节点、边、配置）
-  nodes Json
-  edges Json
+  nodes Json // 节点数据
+  edges Json // 边数据
 
   // 版本控制
   version Int @default(1)
@@ -106,12 +106,6 @@ model Workflow {
   @@map("workflows")
 }
 
-enum ExecutionStatus {
-  RUNNING
-  SUCCESS
-  ERROR
-}
-
 // 发布的应用版本（工作流快照）
 model PublishedApp {
   id          String  @id @default(cuid())
@@ -120,8 +114,8 @@ model PublishedApp {
   description String? // 发布时的描述快照
 
   // 工作流定义快照（发布时复制，独立于 Workflow）
-  nodes Json
-  edges Json
+  nodes Json // 节点数据快照
+  edges Json // 边数据快照
 
   // 关联应用
   appId String
@@ -130,10 +124,12 @@ model PublishedApp {
   // 反向关联（被 App.activePublished 引用）
   activeApps App[] @relation("ActivePublished")
 
+  // 关联 API 执行历史
+  executions AppExecution[]
+
   // 发布信息
-  publishedAt   DateTime       @default(now())
-  publishedBy   String? // 发布者用户 ID
-  appExecutions AppExecution[]
+  publishedAt DateTime @default(now())
+  publishedBy String? // 发布者用户 ID
 
   @@unique([appId, version]) // 同一应用的版本号唯一
   @@index([appId])
@@ -141,7 +137,7 @@ model PublishedApp {
   @@map("published_apps")
 }
 
-// 工作流执行历史记录（编辑器中的测试运行）
+// 工作流测试执行历史记录（编辑器中的测试运行）
 model WorkflowExecution {
   id          String @id @default(cuid())
   executionId String @unique // 执行唯一标识
@@ -150,16 +146,16 @@ model WorkflowExecution {
   status ExecutionStatus @default(RUNNING)
 
   // 输入输出
-  inputs  Json? // 工作流输入参数
-  outputs Json? // 工作流输出结果
+  inputs  Json? // 输入参数
+  outputs Json? // 输出结果
   error   String? // 错误信息
 
   // 执行统计
-  duration    Int? // 执行时长，单位毫秒
-  totalTokens Int  @default(0) // 总消耗 tokens 数
+  duration    Int? // 执行耗时(毫秒)
+  totalTokens Int  @default(0) // Token消耗
 
   // 节点执行追踪
-  nodeTraces Json? // 节点执行详情，包括每个节点的输入输出、执行时长、消耗 tokens 数等
+  nodeTraces Json? // 节点执行详情
 
   // 关联应用
   appId String
@@ -173,6 +169,18 @@ model WorkflowExecution {
   @@index([status])
   @@index([startedAt])
   @@map("workflow_executions")
+}
+
+enum ExecutionStatus {
+  RUNNING
+  SUCCESS
+  ERROR
+}
+
+enum AppType {
+  WORKFLOW
+  CHATBOT
+  AGENT
 }
 
 // API 访问密钥
@@ -190,6 +198,7 @@ model ApiKey {
   lastUsedAt DateTime? // 最后使用时间
   usageCount Int       @default(0) // 使用次数
 
+  // 关联应用
   appId String
   app   App    @relation(fields: [appId], references: [id], onDelete: Cascade)
 
@@ -280,7 +289,6 @@ model KnowledgeBase {
   // 关联文档
   documents Document[]
 
-  // 时间戳
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -305,11 +313,10 @@ model Document {
   // 统计
   chunkCount Int @default(0)
 
-  //处理时间
+  // 处理时间
   processedAt DateTime?
 
-  //关联知识库
-
+  // 关联知识库
   knowledgeBaseId String
   knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
 
@@ -341,4 +348,155 @@ enum DocumentStatus {
   PROCESSING
   COMPLETED
   ERROR
+}
+
+// ==================== 插件模块 ====================
+
+// 插件
+model Plugin {
+  id          String  @id @default(cuid())
+  pluginId    String  @unique // @scope/name 格式
+  name        String // 显示名称
+  description String // 描述
+  icon        String? // 图标 URL 或 emoji
+
+  // 分类和标签
+  category PluginCategory @default(INTEGRATION)
+  tags     String[]       @default([])
+
+  // 统计信息
+  downloadCount Int    @default(0)
+  rating        Float? // 平均评分
+  ratingCount   Int    @default(0)
+
+  // 状态
+  status     PluginStatus @default(PENDING)
+  isOfficial Boolean      @default(false)
+
+  // 关联作者（可选，开源插件可能没有作者）
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  // 外部链接
+  homepage   String?
+  repository String?
+
+  // 最新版本（快速访问）
+  latestVersion String?
+
+  // 关联版本
+  versions PluginVersion[]
+
+  // 关联安装
+  installations PluginInstallation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([status])
+  @@index([authorId])
+  @@index([downloadCount])
+  @@map("plugins")
+}
+
+// 插件版本
+model PluginVersion {
+  id      String @id @default(cuid())
+  version String // semver 版本号
+
+  // 权限声明
+  permissions String[] @default([])
+
+  // 节点声明（JSON 格式的 PluginNodeDeclaration[]）
+  nodes Json
+
+  // 资源 URL
+  manifestUrl   String // plugin.json URL
+  executorUrl   String // 执行器 bundle URL
+  componentsUrl String? // 组件 bundle URL
+
+  // 变更日志
+  changelog String?
+
+  // 版本状态
+  status PluginVersionStatus @default(PENDING)
+
+  // 审核信息
+  reviewedBy  String? // 审核人 ID
+  reviewedAt  DateTime?
+  reviewNotes String? // 审核备注
+
+  // 关联插件
+  pluginId String
+  plugin   Plugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  // 关联安装（哪些安装使用此版本）
+  installations PluginInstallation[]
+
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([pluginId, version])
+  @@index([pluginId])
+  @@index([status])
+  @@map("plugin_versions")
+}
+
+// 插件安装记录
+model PluginInstallation {
+  id String @id @default(cuid())
+
+  // 是否启用
+  isEnabled Boolean @default(true)
+
+  // 插件配置（用户自定义配置）
+  config Json?
+
+  // 关联插件
+  pluginId String
+  plugin   Plugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  // 关联版本
+  versionId String
+  version   PluginVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  // 关联用户
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([pluginId, userId])
+  @@index([pluginId])
+  @@index([userId])
+  @@index([isEnabled])
+  @@map("plugin_installations")
+}
+
+// 插件分类
+enum PluginCategory {
+  AI // AI 相关
+  INTEGRATION // 集成（第三方服务）
+  DATA // 数据处理
+  MEDIA // 媒体处理
+  UTILITY // 工具类
+  COMMUNICATION // 通信类
+}
+
+// 插件状态
+enum PluginStatus {
+  PENDING // 待审核
+  PUBLISHED // 已发布
+  SUSPENDED // 已暂停
+  DEPRECATED // 已废弃
+}
+
+// 插件版本状态
+enum PluginVersionStatus {
+  PENDING // 待审核
+  APPROVED // 已通过
+  REJECTED // 已拒绝
 }
